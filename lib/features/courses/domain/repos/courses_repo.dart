@@ -23,19 +23,11 @@ abstract class CoursesRepo {
   Future<Either<String, List<String>>> getCompletedLessons(String userId, String courseId);
   Future<Either<String, List<LeaderboardEntity>>> getLeaderboard();
   Future<Either<String, void>> rateCourse(String courseId, double rating);
-  
-  // Comments
   Future<Either<String, List<CommentEntity>>> getLessonComments(String lessonId);
   Future<Either<String, void>> addComment(CommentEntity comment);
-
-  // Notifications
   Future<Either<String, List<NotificationEntity>>> getNotifications(String userId);
   Future<Either<String, void>> markNotificationAsRead(String userId, String notificationId);
-
-  // Enrollments for Teacher
   Future<Either<String, List<EnrollmentEntity>>> getCourseEnrollments(String teacherId);
-
-  // Private Messaging
   Future<Either<String, void>> sendMessage(MessageEntity message);
   Future<Either<String, List<MessageEntity>>> getChatMessages(String userId, String otherId);
 }

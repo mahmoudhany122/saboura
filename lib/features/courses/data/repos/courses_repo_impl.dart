@@ -32,6 +32,8 @@ class CoursesRepoImpl implements CoursesRepo {
         ratingCount: course.ratingCount,
         enrollmentCount: course.enrollmentCount,
       );
+      
+      // CRITICAL FIX: Convert to JSON Map before sending to Firestore
       await _firestore.collection('courses').doc(course.id).set(courseModel.toJson());
       return const Right(null);
     } catch (e) {
@@ -162,7 +164,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(results);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -224,7 +225,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(results);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -289,7 +289,6 @@ class CoursesRepoImpl implements CoursesRepo {
       }).toList();
       return Right(leaderboard);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -340,7 +339,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(comments);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -383,7 +381,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(notifications);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -427,7 +424,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(enrollments);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -451,11 +447,9 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, List<MessageEntity>>> getChatMessages(String userId, String otherId) async {
     try {
-      // Fetch messages where (sender is me AND receiver is him) OR (sender is him AND receiver is me)
       final snapshot = await _firestore
           .collection('chats')
           .where('senderId', whereIn: [userId, otherId])
-          .orderBy('timestamp', descending: false)
           .get();
 
       final messages = snapshot.docs.map((doc) {
@@ -475,7 +469,6 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(messages);
     } catch (e) {
-      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
