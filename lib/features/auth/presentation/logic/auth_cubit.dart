@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'auth_state.dart';
+import '../../../../core/helpers/cache_helper.dart';
+import '../../domain/entities/user_entity.dart';
 import '../../domain/repos/auth_repo.dart';
+import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepo _authRepo;
@@ -11,7 +13,12 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await _authRepo.loginWithEmailAndPassword(email, password);
     result.fold(
       (error) => emit(AuthError(error: error)),
-      (user) => emit(AuthSuccess(user)),
+      (user) async {
+        await CacheHelper.setData(key: 'uId', value: user.uId);
+        await CacheHelper.setData(key: 'role', value: user.role);
+        await CacheHelper.setData(key: 'userName', value: user.name);
+        emit(AuthSuccess(user));
+      },
     );
   }
 
@@ -30,7 +37,11 @@ class AuthCubit extends Cubit<AuthState> {
     );
     result.fold(
       (error) => emit(AuthError(error: error)),
-      (user) => emit(AuthSuccess(user)),
+      (user) async {
+        await CacheHelper.setData(key: 'uId', value: user.uId);
+        await CacheHelper.setData(key: 'userName', value: user.name);
+        emit(AuthSuccess(user));
+      },
     );
   }
 
@@ -39,7 +50,12 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await _authRepo.loginWithGoogle();
     result.fold(
       (error) => emit(AuthError(error: error)),
-      (user) => emit(AuthSuccess(user)),
+      (user) async {
+        await CacheHelper.setData(key: 'uId', value: user.uId);
+        await CacheHelper.setData(key: 'role', value: user.role);
+        await CacheHelper.setData(key: 'userName', value: user.name);
+        emit(AuthSuccess(user));
+      },
     );
   }
 }

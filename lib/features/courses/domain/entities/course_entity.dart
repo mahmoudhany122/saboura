@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'quiz_entity.dart';
 
 class CourseEntity extends Equatable {
   final String id;
@@ -7,6 +8,9 @@ class CourseEntity extends Equatable {
   final String imageUrl;
   final String teacherId;
   final List<ModuleEntity> modules;
+  final double rating;
+  final int ratingCount;
+  final int enrollmentCount;
 
   const CourseEntity({
     required this.id,
@@ -15,10 +19,23 @@ class CourseEntity extends Equatable {
     required this.imageUrl,
     required this.teacherId,
     required this.modules,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    this.enrollmentCount = 0,
   });
 
   @override
-  List<Object?> get props => [id, title, description, imageUrl, teacherId, modules];
+  List<Object?> get props => [
+        id,
+        title,
+        description,
+        imageUrl,
+        teacherId,
+        modules,
+        rating,
+        ratingCount,
+        enrollmentCount
+      ];
 }
 
 class ModuleEntity extends Equatable {
@@ -39,18 +56,18 @@ class ModuleEntity extends Equatable {
 class LessonEntity extends Equatable {
   final String id;
   final String title;
-  final LessonType type;
-  final String contentUrl; // URL for video/pdf, or quiz ID
+  final String? videoUrl;
+  final String? pdfUrl;
+  final QuizEntity? quiz;
 
   const LessonEntity({
     required this.id,
     required this.title,
-    required this.type,
-    required this.contentUrl,
+    this.videoUrl,
+    this.pdfUrl,
+    this.quiz,
   });
 
   @override
-  List<Object?> get props => [id, title, type, contentUrl];
+  List<Object?> get props => [id, title, videoUrl, pdfUrl, quiz];
 }
-
-enum LessonType { video, pdf, quiz }

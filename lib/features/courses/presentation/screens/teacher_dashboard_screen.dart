@@ -1,29 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/helpers/cache_helper.dart';
 import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
+import '../logic/courses_cubit.dart';
+import '../logic/courses_state.dart';
+import '../../domain/entities/course_entity.dart';
 
-class TeacherDashboardScreen extends StatelessWidget {
+class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
 
   @override
+  State<TeacherDashboardScreen> createState() => _TeacherDashboardScreenState();
+}
+
+class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses();
+  }
+
+  void _loadCourses() {
+    final uId = CacheHelper.getData(key: 'uId');
+    if (uId != null) {
+      context.read<CoursesCubit>().getTeacherCourses(uId);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    String userName = CacheHelper.getData(key: 'userName') ?? 'المعلم';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('لوحة تحكم المعلم'),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined),
+            onPressed: _loadCourses,
+            icon: const Icon(Icons.refresh),
           ),
-          IconButton(
-            onPressed: () {
-              Navigator.pushNamedAndRemoveUntil(context, Routes.loginScreen, (route) => false);
-            },
-            icon: const Icon(Icons.logout),
-          ),
+
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -32,104 +52,134 @@ class TeacherDashboardScreen extends StatelessWidget {
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('إضافة كورس', style: TextStyle(color: Colors.white)),
       ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: BlocBuilder<CoursesCubit, CoursesState>(
+        builder: (context, state) {
+          if (state is CoursesLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is CoursesLoaded) {
+            return _buildDashboardContent(userName, state.courses);
+          } else if (state is CoursesError) {
+            return Center(child: Text(state.error));
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent(String userName, List<CourseEntity> courses) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 20.h),
+          FadeInDown(
+            child: Text(
+              'مرحباً أستاذ $userName 👋',
+              style: TextStyles.font24BlackBold,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Text('لديك ${courses.length} كورسات منشورة.', style: TextStyles.font14GrayRegular),
+          SizedBox(height: 30.h),
+          Text('إدارة كورساتك', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
+          SizedBox(height: 15.h),
+          Expanded(
+            child: courses.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    itemCount: courses.length,
+                    itemBuilder: (context, index) {
+                      return FadeInUp(
+                        delay: Duration(milliseconds: 100 * index),
+                        child: _buildCourseItem(courses[index]),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.library_books_outlined, size: 80.w, color: ColorsManager.lightGray),
+          SizedBox(height: 20.h),
+          const Text('لا يوجد كورسات مضافة بعد'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCourseItem(CourseEntity course) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to edit/add lessons for this specific course
+        Navigator.pushNamed(
+          context, 
+          Routes.addLessonsScreen, 
+          arguments: {
+            'id': course.id,
+            'title': course.title,
+            'modules': course.modules,
+            'isEditing': true,
+          }
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        ),
+        child: Row(
           children: [
-            SizedBox(height: 20.h),
-            FadeInDown(
-              child: Text(
-                'مرحباً أستاذ محمد 👋',
-                style: TextStyles.font24BlackBold,
+            Container(
+              width: 70.w,
+              height: 70.w,
+              decoration: BoxDecoration(
+                color: ColorsManager.moreLightGray,
+                borderRadius: BorderRadius.circular(12),
+                image: course.imageUrl.isNotEmpty 
+                  ? DecorationImage(image: NetworkImage(course.imageUrl), fit: BoxFit.cover)
+                  : null,
               ),
+              child: course.imageUrl.isEmpty ? const Icon(Icons.book, color: ColorsManager.mainBlue) : null,
             ),
-            SizedBox(height: 10.h),
-            Text('لديك 3 كورسات نشطة و 150 طالب', style: TextStyles.font14GrayRegular),
-            SizedBox(height: 30.h),
-            Text('كورساتك الحالية', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
-            SizedBox(height: 15.h),
+            SizedBox(width: 15.w),
             Expanded(
-              child: ListView.builder(
-                itemCount: 3,
-                itemBuilder: (context, index) {
-                  return FadeInUp(
-                    delay: Duration(milliseconds: 100 * index),
-                    child: _buildCourseItem(),
-                  );
-                },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(course.title, style: TextStyles.font15DarkBlueMedium),
+                  SizedBox(height: 4.h),
+                  Row(
+                    children: [
+                      Icon(Icons.people_outline, size: 14, color: ColorsManager.gray),
+                      SizedBox(width: 4.w),
+                      Text('${course.enrollmentCount} طالب مسجل', style: TextStyles.font13GrayRegular),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.star, size: 14, color: Colors.amber),
+                      SizedBox(width: 4.w),
+                      Text('${course.rating} تقييم', style: TextStyles.font13GrayRegular),
+                    ],
+                  ),
+                ],
               ),
             ),
+            const Icon(Icons.edit, size: 20, color: ColorsManager.mainBlue),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCourseItem() {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 80.w,
-            height: 80.w,
-            decoration: BoxDecoration(
-              color: ColorsManager.lighterGray,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.book, color: ColorsManager.mainBlue),
-          ),
-          SizedBox(width: 15.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('كورس اللغة العربية - المستوى الأول', style: TextStyles.font15DarkBlueMedium),
-                SizedBox(height: 4.h),
-                Text('45 طالب مسجل', style: TextStyles.font13GrayRegular),
-                SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    _buildStatChip(Icons.play_circle_outline, '12 درس'),
-                    SizedBox(width: 10.w),
-                    _buildStatChip(Icons.quiz_outlined, '4 اختبارات'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.arrow_forward_ios, size: 16, color: ColorsManager.lightGray),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatChip(IconData icon, String label) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: ColorsManager.moreLightGray,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: ColorsManager.mainBlue),
-          SizedBox(width: 4.w),
-          Text(label, style: TextStyle(fontSize: 11.sp, color: ColorsManager.mainBlue)),
-        ],
       ),
     );
   }

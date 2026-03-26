@@ -82,9 +82,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   onPressed: selectedRole == null
                       ? null
                       : () {
-                          // TODO: Update user role in Firestore
-                          Navigator.pushNamedAndRemoveUntil(
-                              context, Routes.homeScreen, (route) => false);
+                          if (selectedRole == 'teacher') {
+                            Navigator.pushNamedAndRemoveUntil(
+                                context, Routes.teacherDashboardScreen, (route) => false);
+                          } else {
+                            Navigator.pushNamedAndRemoveUntil(
+                                context, Routes.studentHomeScreen, (route) => false);
+                          }
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ColorsManager.mainBlue,

@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../../../core/widgets/app_text_form_field.dart';
@@ -15,18 +18,35 @@ class AddCourseScreen extends StatefulWidget {
 
 class _AddCourseScreenState extends State<AddCourseScreen> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _imageUrlController = TextEditingController();
   QuizTheme selectedQuizTheme = QuizTheme.classic;
+  File? _image;
+  final picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+        _imageUrlController.clear(); // Clear URL if file is picked
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _imageUrlController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('إضافة كورس جديد'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: ColorsManager.darkBlue,
-      ),
+      appBar: AppBar(title: const Text('إضافة كورس جديد')),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20.w),
         child: Form(
@@ -35,53 +55,78 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FadeInDown(
-                child: Center(
-                  child: Container(
-                    height: 150.h,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: ColorsManager.lighterGray,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: ColorsManager.lightGray),
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Center(
+                    child: Container(
+                      height: 150.h,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: ColorsManager.moreLightGray,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ColorsManager.lighterGray),
+                        image: _image != null 
+                          ? DecorationImage(image: FileImage(_image!), fit: BoxFit.cover)
+                          : (_imageUrlController.text.isNotEmpty 
+                              ? DecorationImage(image: NetworkImage(_imageUrlController.text), fit: BoxFit.cover)
+                              : null),
+                      ),
+                      child: (_image == null && _imageUrlController.text.isEmpty)
+                        ? const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo, size: 50, color: ColorsManager.mainBlue),
+                              SizedBox(height: 8),
+                              Text('اضغط لإضافة صورة أو ضع رابطاً بالأسفل', style: TextStyle(color: ColorsManager.gray, fontSize: 12)),
+                            ],
+                          )
+                        : null,
                     ),
-                    child: const Icon(Icons.add_a_photo, size: 50, color: ColorsManager.mainBlue),
                   ),
                 ),
               ),
-              SizedBox(height: 24.h),
-              Text('بيانات الكورس الأساسية', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
-              SizedBox(height: 16.h),
+              const SizedBox(height: 15),
               AppTextFormField(
-                hintText: 'اسم الكورس',
-                validator: (v) => v!.isEmpty ? 'يرجى إدخال اسم الكورس' : null,
+                controller: _imageUrlController,
+                hintText: 'رابط صورة الكورس (اختياري لتوفير التكلفة)',
+                validator: (v) => null,
+                suffixIcon: const Icon(Icons.link, color: Colors.grey),
               ),
-              SizedBox(height: 16.h),
+              const SizedBox(height: 24),
+              Text('بيانات الكورس', style: TextStyles.font15DarkBlueMedium),
+              const SizedBox(height: 16),
               AppTextFormField(
+                controller: _titleController,
+                hintText: 'اسم الكورس',
+                validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null,
+              ),
+              const SizedBox(height: 16),
+              AppTextFormField(
+                controller: _descriptionController,
                 hintText: 'نبذة عن الكورس',
                 validator: (v) => v!.isEmpty ? 'يرجى إدخال نبذة' : null,
               ),
-              SizedBox(height: 30.h),
-              Text('إعدادات الاختبار التفاعلي', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
-              SizedBox(height: 12.h),
-              const Text('اختر طابع الاختبار (خاص بالأطفال):', style: TextStyle(color: Colors.grey)),
-              SizedBox(height: 16.h),
-              SizedBox(
-                height: 120.h,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildThemeCard(QuizTheme.classic, 'كلاسيكي', Icons.quiz),
-                    _buildThemeCard(QuizTheme.carRacing, 'سباق سيارات', Icons.directions_car),
-                    _buildThemeCard(QuizTheme.space, 'فضاء', Icons.rocket_launch),
-                    _buildThemeCard(QuizTheme.monkey, 'القرد المرح', Icons.emoji_emotions),
-                  ],
-                ),
-              ),
-              SizedBox(height: 40.h),
+              const SizedBox(height: 30),
+              Text('طابع الاختبار للأطفال', style: TextStyles.font15DarkBlueMedium),
+              const SizedBox(height: 16),
+              _buildThemeSelector(),
+              const SizedBox(height: 40),
               FadeInUp(
                 child: ElevatedButton(
                   onPressed: () {
-                    // Logic to save course and add questions
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pushNamed(
+                        context, 
+                        Routes.addLessonsScreen, 
+                        arguments: {
+                          'title': _titleController.text,
+                          'description': _descriptionController.text,
+                          'imageUrl': _imageUrlController.text,
+                          'imageFile': _image,
+                          'quizTheme': selectedQuizTheme,
+                        }
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ColorsManager.mainBlue,
@@ -98,25 +143,39 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Widget _buildThemeCard(QuizTheme theme, String title, IconData icon) {
+  Widget _buildThemeSelector() {
+    return SizedBox(
+      height: 100.h,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _themeCard(QuizTheme.classic, 'كلاسيكي', Icons.quiz),
+          _themeCard(QuizTheme.carRacing, 'سباق', Icons.directions_car),
+          _themeCard(QuizTheme.space, 'فضاء', Icons.rocket_launch),
+          _themeCard(QuizTheme.monkey, 'قرد', Icons.emoji_emotions),
+        ],
+      ),
+    );
+  }
+
+  Widget _themeCard(QuizTheme theme, String name, IconData icon) {
     bool isSelected = selectedQuizTheme == theme;
     return GestureDetector(
       onTap: () => setState(() => selectedQuizTheme = theme),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        margin: EdgeInsets.only(left: 12.w),
-        width: 100.w,
+        margin: EdgeInsets.only(left: 10.w),
+        width: 80.w,
         decoration: BoxDecoration(
           color: isSelected ? ColorsManager.mainBlue : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(color: isSelected ? ColorsManager.mainBlue : ColorsManager.lighterGray),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.white : ColorsManager.mainBlue, size: 30),
-            SizedBox(height: 8.h),
-            Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12.sp)),
+            Icon(icon, color: isSelected ? Colors.white : ColorsManager.mainBlue),
+            Text(name, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12)),
           ],
         ),
       ),
