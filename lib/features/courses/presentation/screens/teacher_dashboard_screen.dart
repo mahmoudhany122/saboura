@@ -9,6 +9,7 @@ import '../../../../core/theming/styles.dart';
 import '../logic/courses_cubit.dart';
 import '../logic/courses_state.dart';
 import '../../domain/entities/course_entity.dart';
+import '../widgets/teacher_course_item.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
@@ -43,7 +44,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
             onPressed: _loadCourses,
             icon: const Icon(Icons.refresh),
           ),
-
+          IconButton(
+            onPressed: () {
+              CacheHelper.clearData();
+              Navigator.pushNamedAndRemoveUntil(context, Routes.loginScreen, (route) => false);
+            },
+            icon: const Icon(Icons.logout),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -93,7 +100,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     itemBuilder: (context, index) {
                       return FadeInUp(
                         delay: Duration(milliseconds: 100 * index),
-                        child: _buildCourseItem(courses[index]),
+                        child: TeacherCourseItem(course: courses[index]),
                       );
                     },
                   ),
@@ -112,74 +119,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
           SizedBox(height: 20.h),
           const Text('لا يوجد كورسات مضافة بعد'),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCourseItem(CourseEntity course) {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to edit/add lessons for this specific course
-        Navigator.pushNamed(
-          context, 
-          Routes.addLessonsScreen, 
-          arguments: {
-            'id': course.id,
-            'title': course.title,
-            'modules': course.modules,
-            'isEditing': true,
-          }
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16.h),
-        padding: EdgeInsets.all(12.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 70.w,
-              height: 70.w,
-              decoration: BoxDecoration(
-                color: ColorsManager.moreLightGray,
-                borderRadius: BorderRadius.circular(12),
-                image: course.imageUrl.isNotEmpty 
-                  ? DecorationImage(image: NetworkImage(course.imageUrl), fit: BoxFit.cover)
-                  : null,
-              ),
-              child: course.imageUrl.isEmpty ? const Icon(Icons.book, color: ColorsManager.mainBlue) : null,
-            ),
-            SizedBox(width: 15.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(course.title, style: TextStyles.font15DarkBlueMedium),
-                  SizedBox(height: 4.h),
-                  Row(
-                    children: [
-                      Icon(Icons.people_outline, size: 14, color: ColorsManager.gray),
-                      SizedBox(width: 4.w),
-                      Text('${course.enrollmentCount} طالب مسجل', style: TextStyles.font13GrayRegular),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Icon(Icons.star, size: 14, color: Colors.amber),
-                      SizedBox(width: 4.w),
-                      Text('${course.rating} تقييم', style: TextStyles.font13GrayRegular),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.edit, size: 20, color: ColorsManager.mainBlue),
-          ],
-        ),
       ),
     );
   }

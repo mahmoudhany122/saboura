@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
+import '../../domain/entities/leaderboard_entity.dart';
 import '../../domain/repos/courses_repo.dart';
 import '../models/course_model.dart';
 
@@ -229,7 +230,6 @@ class CoursesRepoImpl implements CoursesRepo {
         });
       }
       
-      // Calculate progress percentage
       final courseDoc = await _firestore.collection('courses').doc(courseId).get();
       final courseData = CourseModel.fromJson(courseDoc.data()!);
       int totalLessons = 0;
@@ -255,6 +255,25 @@ class CoursesRepoImpl implements CoursesRepo {
       final doc = await _firestore.collection('users').doc(userId).collection('enrolled_courses').doc(courseId).get();
       final completed = List<String>.from(doc.data()?['completedLessons'] ?? []);
       return Right(completed);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, List<LeaderboardEntity>>> getLeaderboard() async {
+    try {
+      final snapshot = await _firestore.collection('users').orderBy('points', descending: true).limit(10).get();
+      final leaderboard = snapshot.docs.asMap().entries.map((entry) {
+        final data = entry.value.data();
+        return LeaderboardEntity(
+          userId: entry.value.id,
+          userName: data['name'] ?? 'طالب',
+          totalPoints: data['points'] ?? 0,
+          rank: entry.key + 1,
+        );
+      }).toList();
+      return Right(leaderboard);
     } catch (e) {
       return Left(e.toString());
     }

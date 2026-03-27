@@ -10,6 +10,8 @@ import '../../domain/entities/quiz_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
 import '../logic/courses_cubit.dart';
 import '../logic/courses_state.dart';
+import '../widgets/quiz_game_element.dart';
+import '../widgets/answer_option.dart';
 
 class QuizScreen extends StatefulWidget {
   final QuizEntity quiz;
@@ -72,8 +74,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _saveAndShowResult() {
     _timer.cancel();
-    
-    // Logic to save result to Firestore
     final uId = CacheHelper.getData(key: 'uId');
     final userName = CacheHelper.getData(key: 'userName') ?? 'طالب';
     
@@ -82,7 +82,7 @@ class _QuizScreenState extends State<QuizScreen> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: uId,
         userName: userName,
-        courseId: 'unknown', // Ideally passed from previous screen
+        courseId: 'unknown', 
         quizId: widget.quiz.id,
         quizTitle: widget.quiz.title,
         score: score,
@@ -91,7 +91,6 @@ class _QuizScreenState extends State<QuizScreen> {
       );
       context.read<CoursesCubit>().saveQuizResult(result);
     }
-
     _showResultDialog();
   }
 
@@ -134,6 +133,8 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     var question = widget.quiz.questions[currentQuestionIndex];
+    double progress = (currentQuestionIndex) / widget.quiz.questions.length;
+    bool isCorrect = isAnswered && (selectedAnswerIndex == question.correctAnswerIndex);
 
     return Scaffold(
       backgroundColor: _getThemeBackgroundColor(),
@@ -190,137 +191,27 @@ class _QuizScreenState extends State<QuizScreen> {
                 
                 SizedBox(height: 20.h),
                 
-                Expanded(child: _buildGameElement()),
+                Expanded(
+                  child: QuizGameElement(
+                    theme: widget.quiz.theme,
+                    progress: progress,
+                    isAnswered: isAnswered,
+                    isCorrect: isCorrect,
+                  ),
+                ),
                 
-                ...List.generate(question.options.length, (index) => _buildOption(index, question)),
+                ...List.generate(question.options.length, (index) => AnswerOption(
+                  index: index,
+                  optionText: question.options[index],
+                  isAnswered: isAnswered,
+                  isCorrect: index == question.correctAnswerIndex,
+                  isSelected: index == selectedAnswerIndex,
+                  onTap: () => _checkAnswer(index),
+                )),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildGameElement() {
-    double progress = (currentQuestionIndex) / widget.quiz.questions.length;
-    
-    switch (widget.quiz.theme) {
-      case QuizTheme.carRacing:
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              height: 60.h,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: CustomPaint(painter: RoadPainter()),
-            ),
-            AnimatedAlign(
-              duration: const Duration(milliseconds: 1000),
-              alignment: Alignment(progress * 2 - 1, 0),
-              child: const Icon(Icons.directions_car, size: 50, color: Colors.orange),
-            ),
-          ],
-        );
-      case QuizTheme.monkey:
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (isAnswered)
-                (selectedAnswerIndex == widget.quiz.questions[currentQuestionIndex].correctAnswerIndex)
-                  ? ZoomIn(child: const Text('🐒 ييييي هااااا!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)))
-                  : ShakeX(child: const Text('🐒 اووووه لاااا!', style: TextStyle(fontSize: 30))),
-              SizedBox(height: 10.h),
-              Icon(
-                isAnswered 
-                  ? (selectedAnswerIndex == widget.quiz.questions[currentQuestionIndex].correctAnswerIndex ? Icons.sentiment_very_satisfied : Icons.sentiment_very_dissatisfied)
-                  : Icons.emoji_emotions,
-                size: 100.w, 
-                color: Colors.brown
-              ),
-            ],
-          ),
-        );
-      case QuizTheme.space:
-        return Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 1000),
-            margin: EdgeInsets.only(bottom: progress * 100.h),
-            child: const RocketAnimation(),
-          ),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildOption(int index, QuestionEntity question) {
-    bool isCorrect = index == question.correctAnswerIndex;
-    bool isSelected = index == selectedAnswerIndex;
-
-    Color cardColor = Colors.white;
-    if (isAnswered) {
-      if (isCorrect) cardColor = Colors.green.shade50;
-      else if (isSelected) cardColor = Colors.red.shade50;
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: GestureDetector(
-        onTap: () => _checkAnswer(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: EdgeInsets.all(18.w),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isAnswered 
-                  ? (isCorrect ? Colors.green : (isSelected ? Colors.red : ColorsManager.lighterGray))
-                  : ColorsManager.lighterGray,
-              width: 2.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 35.w,
-                height: 35.w,
-                decoration: BoxDecoration(
-                  color: isAnswered 
-                      ? (isCorrect ? Colors.green : (isSelected ? Colors.red : ColorsManager.moreLightGray))
-                      : ColorsManager.moreLightGray,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    String.fromCharCode(65 + index),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isAnswered && (isCorrect || isSelected) ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 15.w),
-              Expanded(
-                child: Text(
-                  question.options[index],
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ),
-              if (isAnswered && isCorrect) const Icon(Icons.check_circle, color: Colors.green),
-              if (isAnswered && isSelected && !isCorrect) const Icon(Icons.cancel, color: Colors.red),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -366,44 +257,6 @@ class _QuizScreenState extends State<QuizScreen> {
     return Positioned(
       bottom: 0,
       child: Icon(Icons.terrain, size: 400.w, color: Colors.orange.shade700.withOpacity(0.3)),
-    );
-  }
-}
-
-class RoadPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    double dashWidth = 10, dashSpace = 10, startX = 0;
-    while (startX < size.width) {
-      canvas.drawLine(Offset(startX, size.height / 2), Offset(startX + dashWidth, size.height / 2), paint);
-      startX += dashWidth + dashSpace;
-    }
-  }
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class RocketAnimation extends StatelessWidget {
-  const RocketAnimation({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.rocket_launch, size: 60, color: Colors.redAccent),
-        Container(
-          width: 10,
-          height: 20,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.orange, Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-          ),
-        ),
-      ],
     );
   }
 }

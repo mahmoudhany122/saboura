@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import '../domain/entities/course_entity.dart';
+import '../../domain/entities/course_entity.dart';
 
 class LessonViewerScreen extends StatefulWidget {
   final LessonEntity lesson;

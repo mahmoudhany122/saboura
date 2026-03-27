@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/di/service_locator.dart' as di;
 import 'core/helpers/cache_helper.dart';
+import 'core/helpers/notification_helper.dart';
 import 'core/logic/app_cubit.dart';
 import 'core/logic/bloc_observer.dart';
 import 'core/routing/app_router.dart';
@@ -20,6 +21,9 @@ void main() async {
   
   // Initialize Firebase
   await Firebase.initializeApp();
+  
+  // Initialize Notifications
+  await NotificationHelper.init();
   
   await di.init();
   

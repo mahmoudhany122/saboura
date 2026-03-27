@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../entities/course_entity.dart';
 import '../entities/quiz_result_entity.dart';
+import '../entities/leaderboard_entity.dart';
 
 abstract class CoursesRepo {
   Future<Either<String, void>> addCourse(CourseEntity course);
@@ -16,4 +17,5 @@ abstract class CoursesRepo {
   Future<Either<String, List<QuizResultEntity>>> getTeacherQuizResults(String teacherId);
   Future<Either<String, void>> updateLessonStatus(String userId, String courseId, String lessonId, bool isCompleted);
   Future<Either<String, List<String>>> getCompletedLessons(String userId, String courseId);
+  Future<Either<String, List<LeaderboardEntity>>> getLeaderboard();
 }

@@ -8,6 +8,8 @@ import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../../../core/widgets/app_text_form_field.dart';
 import '../../domain/entities/quiz_entity.dart';
+import '../widgets/course_image_picker.dart';
+import '../widgets/quiz_theme_selector.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -30,7 +32,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     if (pickedFile != null) {
       setState(() {
         _image = File(pickedFile.path);
-        _imageUrlController.clear(); // Clear URL if file is picked
+        _imageUrlController.clear();
       });
     }
   }
@@ -54,36 +56,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FadeInDown(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Center(
-                    child: Container(
-                      height: 150.h,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: ColorsManager.moreLightGray,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ColorsManager.lighterGray),
-                        image: _image != null 
-                          ? DecorationImage(image: FileImage(_image!), fit: BoxFit.cover)
-                          : (_imageUrlController.text.isNotEmpty 
-                              ? DecorationImage(image: NetworkImage(_imageUrlController.text), fit: BoxFit.cover)
-                              : null),
-                      ),
-                      child: (_image == null && _imageUrlController.text.isEmpty)
-                        ? const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo, size: 50, color: ColorsManager.mainBlue),
-                              SizedBox(height: 8),
-                              Text('اضغط لإضافة صورة أو ضع رابطاً بالأسفل', style: TextStyle(color: ColorsManager.gray, fontSize: 12)),
-                            ],
-                          )
-                        : null,
-                    ),
-                  ),
-                ),
+              CourseImagePicker(
+                imageFile: _image,
+                imageUrl: _imageUrlController.text,
+                onTap: _pickImage,
               ),
               const SizedBox(height: 15),
               AppTextFormField(
@@ -109,22 +85,27 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               const SizedBox(height: 30),
               Text('طابع الاختبار للأطفال', style: TextStyles.font15DarkBlueMedium),
               const SizedBox(height: 16),
-              _buildThemeSelector(),
+              QuizThemeSelector(
+                selectedQuizTheme: selectedQuizTheme,
+                onThemeSelected: (theme) {
+                  setState(() => selectedQuizTheme = theme);
+                },
+              ),
               const SizedBox(height: 40),
               FadeInUp(
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
                       Navigator.pushNamed(
-                        context, 
-                        Routes.addLessonsScreen, 
+                        context,
+                        Routes.addLessonsScreen,
                         arguments: {
                           'title': _titleController.text,
                           'description': _descriptionController.text,
                           'imageUrl': _imageUrlController.text,
                           'imageFile': _image,
                           'quizTheme': selectedQuizTheme,
-                        }
+                        },
                       );
                     }
                   },
@@ -138,45 +119,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeSelector() {
-    return SizedBox(
-      height: 100.h,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _themeCard(QuizTheme.classic, 'كلاسيكي', Icons.quiz),
-          _themeCard(QuizTheme.carRacing, 'سباق', Icons.directions_car),
-          _themeCard(QuizTheme.space, 'فضاء', Icons.rocket_launch),
-          _themeCard(QuizTheme.monkey, 'قرد', Icons.emoji_emotions),
-        ],
-      ),
-    );
-  }
-
-  Widget _themeCard(QuizTheme theme, String name, IconData icon) {
-    bool isSelected = selectedQuizTheme == theme;
-    return GestureDetector(
-      onTap: () => setState(() => selectedQuizTheme = theme),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: EdgeInsets.only(left: 10.w),
-        width: 80.w,
-        decoration: BoxDecoration(
-          color: isSelected ? ColorsManager.mainBlue : Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: isSelected ? ColorsManager.mainBlue : ColorsManager.lighterGray),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isSelected ? Colors.white : ColorsManager.mainBlue),
-            Text(name, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12)),
-          ],
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/helpers/cache_helper.dart';
 import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
@@ -81,7 +82,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 child: ElevatedButton(
                   onPressed: selectedRole == null
                       ? null
-                      : () {
+                      : () async {
+                          // Update user role in Cache
+                          await CacheHelper.setData(key: 'role', value: selectedRole);
+                          
+                          if (!mounted) return;
+
                           if (selectedRole == 'teacher') {
                             Navigator.pushNamedAndRemoveUntil(
                                 context, Routes.teacherDashboardScreen, (route) => false);
