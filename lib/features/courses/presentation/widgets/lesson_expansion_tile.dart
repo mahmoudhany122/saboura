@@ -65,7 +65,20 @@ class LessonExpansionTile extends StatelessWidget {
                   }),
                 if (lesson.quiz != null)
                   _buildContentItem(context, Icons.quiz, 'دخول الاختبار', Colors.green, () {
-                    Navigator.pushNamed(context, Routes.quizScreen, arguments: lesson.quiz);
+                    if (isCompleted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('لقد أتممت هذا الاختبار بالفعل ولا يمكن إعادته ⛔'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    } else {
+                      Navigator.pushNamed(context, Routes.quizScreen, arguments: {
+                        'quiz': lesson.quiz,
+                        'courseId': courseId,
+                        'lessonId': lesson.id,
+                      });
+                    }
                   }),
                 ListTile(
                   title: const Text('تحديد كدرس مكتمل',

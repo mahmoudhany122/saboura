@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/helpers/cache_helper.dart';
 import '../../../../core/helpers/spacing.dart';
+import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../domain/entities/course_entity.dart';
@@ -31,11 +32,19 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   }
 
   void _checkInitialEnrollment() {
+    final cubit = context.read<CoursesCubit>();
     final uId = CacheHelper.getData(key: 'uId');
+    
+    // Check if the user is already enrolled using the list in Cubit
+    if (cubit.enrolledCourseIds.contains(widget.course.id)) {
+      setState(() {
+        isEnrolled = true;
+      });
+    }
+
     if (uId != null) {
-      context.read<CoursesCubit>().getCompletedLessons(uId, widget.course.id);
-      // Logic to determine initial enrollment status could go here
-      // or be part of the Bloc state. For now, we listen to EnrollmentSuccess.
+      // Load completed lessons to sync progress state
+      cubit.getCompletedLessons(uId, widget.course.id);
     }
   }
 

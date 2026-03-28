@@ -30,8 +30,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   void _loadData() {
     final uId = CacheHelper.getData(key: 'uId');
     if (uId != null) {
-      context.read<CoursesCubit>().getStudentEnrolledCourses(uId);
-      context.read<CoursesCubit>().getStudentQuizResults(uId);
+      context.read<CoursesCubit>().getStudentDashboardData(uId);
     }
   }
 
@@ -49,7 +48,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       ),
       body: BlocBuilder<CoursesCubit, CoursesState>(
         builder: (context, state) {
+          final cubit = context.read<CoursesCubit>();
+          
           return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.all(20.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,11 +60,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 verticalSpace(30),
                 Text('كورساتي المسجلة', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
                 verticalSpace(15),
-                _buildEnrolledSection(state),
+                _buildEnrolledSection(state, cubit.enrolledCourses),
                 verticalSpace(30),
                 Text('آخر نتائج الاختبارات', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
                 verticalSpace(15),
-                _buildQuizResultsSection(state),
+                _buildQuizResultsSection(state, cubit.studentResults),
               ],
             ),
           );
@@ -98,25 +100,22 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     );
   }
 
-  Widget _buildEnrolledSection(CoursesState state) {
-    if (state is CoursesLoading) return const Center(child: CircularProgressIndicator());
-    if (state is CoursesLoaded) {
-      if (state.courses.isEmpty) return const Center(child: Text('لم تشترك في أي كورس بعد'));
-      return Column(
-        children: state.courses.map((course) => _buildCourseItem(course)).toList(),
-      );
-    }
-    return const SizedBox.shrink();
+  Widget _buildEnrolledSection(CoursesState state, List<CourseEntity> courses) {
+    if (state is CoursesLoading && courses.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (courses.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('لم تشترك في أي كورس بعد')));
+    
+    return Column(
+      children: courses.map((course) => _buildCourseItem(course)).toList(),
+    );
   }
 
-  Widget _buildQuizResultsSection(CoursesState state) {
-    if (state is QuizResultsLoaded) {
-      if (state.results.isEmpty) return const Center(child: Text('لم تحل أي اختبارات بعد'));
-      return Column(
-        children: state.results.map((result) => _buildResultItem(result)).toList(),
-      );
-    }
-    return const SizedBox.shrink();
+  Widget _buildQuizResultsSection(CoursesState state, List<QuizResultEntity> results) {
+    if (state is CoursesLoading && results.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (results.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('لم تحل أي اختبارات بعد')));
+    
+    return Column(
+      children: results.map((result) => _buildResultItem(result)).toList(),
+    );
   }
 
   Widget _buildCourseItem(CourseEntity course) {
@@ -164,7 +163,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             ],
           ),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
             decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: Text('${result.score}/${result.totalQuestions}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
           ),

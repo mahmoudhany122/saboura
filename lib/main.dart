@@ -16,19 +16,26 @@ import 'features/courses/presentation/logic/courses_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await EasyLocalization.ensureInitialized();
-  await CacheHelper.init();
   
-  // Initialize Firebase
-  await Firebase.initializeApp();
-  
-  // Initialize Notifications
-  await NotificationHelper.init();
-  
-  await di.init();
-  
-  Bloc.observer = MyBlocObserver();
-  
+  try {
+    // Basic initializations
+    await EasyLocalization.ensureInitialized();
+    await CacheHelper.init();
+    
+    // Firebase with timeout to prevent hanging on splash
+    await Firebase.initializeApp().timeout(const Duration(seconds: 15));
+    
+    // Dependency Injection
+    await di.init();
+    
+    // Optional services in background
+    NotificationHelper.init();
+    
+    Bloc.observer = MyBlocObserver();
+  } catch (e) {
+    debugPrint("Initialization Error: $e");
+  }
+
   bool isDark = CacheHelper.getData(key: 'isDark') ?? false;
 
   runApp(

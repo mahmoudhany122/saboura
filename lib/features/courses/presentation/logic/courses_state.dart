@@ -1,5 +1,6 @@
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
+import '../../domain/entities/leaderboard_entity.dart';
 
 abstract class CoursesState {
   const CoursesState();
@@ -26,6 +27,11 @@ class TeacherCoursesLoaded extends CoursesState {
 class QuizResultsLoaded extends CoursesState {
   final List<QuizResultEntity> results;
   const QuizResultsLoaded(this.results);
+}
+
+class LeaderboardLoaded extends CoursesState {
+  final List<LeaderboardEntity> leaderboard;
+  const LeaderboardLoaded(this.leaderboard);
 }
 
 class LessonStatusUpdated extends CoursesState {

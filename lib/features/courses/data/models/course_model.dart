@@ -37,7 +37,11 @@ class CourseModel extends CourseEntity {
       'description': description,
       'imageUrl': imageUrl,
       'teacherId': teacherId,
-      'modules': modules.map((m) => (m as ModuleModel).toJson()).toList(),
+      'modules': modules.map((m) => ModuleModel(
+        id: m.id,
+        title: m.title,
+        lessons: m.lessons,
+      ).toJson()).toList(),
       'rating': rating,
       'ratingCount': ratingCount,
       'enrollmentCount': enrollmentCount,
@@ -66,7 +70,13 @@ class ModuleModel extends ModuleEntity {
     return {
       'id': id,
       'title': title,
-      'lessons': lessons.map((l) => (l as LessonModel).toJson()).toList(),
+      'lessons': lessons.map((l) => LessonModel(
+        id: l.id,
+        title: l.title,
+        videoUrl: l.videoUrl,
+        pdfUrl: l.pdfUrl,
+        quiz: l.quiz,
+      ).toJson()).toList(),
     };
   }
 }

@@ -5,6 +5,7 @@ import 'package:dartz/dartz.dart';
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
 import '../../domain/entities/leaderboard_entity.dart';
+import '../../domain/entities/comment_entity.dart';
 import '../../domain/repos/courses_repo.dart';
 import '../models/course_model.dart';
 
@@ -67,7 +68,12 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, void>> updateCourseLessons(String courseId, List<ModuleEntity> modules) async {
     try {
-      final modulesJson = modules.map((m) => (m as ModuleModel).toJson()).toList();
+      final modulesJson = modules.map((m) => ModuleModel(
+        id: m.id,
+        title: m.title,
+        lessons: m.lessons,
+      ).toJson()).toList();
+      
       await _firestore.collection('courses').doc(courseId).update({
         'modules': modulesJson,
       });
@@ -80,14 +86,30 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, void>> enrollInCourse(String userId, String courseId) async {
     try {
-      await _firestore.collection('users').doc(userId).collection('enrolled_courses').doc(courseId).set({
+      // Get User Name for enrollment record
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userName = userDoc.data()?['name'] ?? 'طالب';
+
+      final enrollmentData = {
+        'userId': userId,
+        'userName': userName,
+        'courseId': courseId,
         'enrolledAt': FieldValue.serverTimestamp(),
         'progress': 0.0,
         'completedLessons': [],
-      });
+      };
+
+      // 1. Save in user's profile
+      await _firestore.collection('users').doc(userId).collection('enrolled_courses').doc(courseId).set(enrollmentData);
+      
+      // 2. Save in global enrollments for teacher tracking
+      await _firestore.collection('enrollments').doc('${userId}_${courseId}').set(enrollmentData);
+
+      // 3. Update course stats
       await _firestore.collection('courses').doc(courseId).update({
         'enrollmentCount': FieldValue.increment(1),
       });
+      
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -220,14 +242,14 @@ class CoursesRepoImpl implements CoursesRepo {
   Future<Either<String, void>> updateLessonStatus(String userId, String courseId, String lessonId, bool isCompleted) async {
     try {
       final ref = _firestore.collection('users').doc(userId).collection('enrolled_courses').doc(courseId);
+      final globalRef = _firestore.collection('enrollments').doc('${userId}_${courseId}');
+
       if (isCompleted) {
-        await ref.update({
-          'completedLessons': FieldValue.arrayUnion([lessonId]),
-        });
+        await ref.update({'completedLessons': FieldValue.arrayUnion([lessonId])});
+        await globalRef.update({'completedLessons': FieldValue.arrayUnion([lessonId])});
       } else {
-        await ref.update({
-          'completedLessons': FieldValue.arrayRemove([lessonId]),
-        });
+        await ref.update({'completedLessons': FieldValue.arrayRemove([lessonId])});
+        await globalRef.update({'completedLessons': FieldValue.arrayRemove([lessonId])});
       }
       
       final courseDoc = await _firestore.collection('courses').doc(courseId).get();
@@ -242,6 +264,7 @@ class CoursesRepoImpl implements CoursesRepo {
       
       double progress = totalLessons > 0 ? (completedCount / totalLessons) : 0.0;
       await ref.update({'progress': progress});
+      await globalRef.update({'progress': progress});
       
       return const Right(null);
     } catch (e) {
@@ -274,6 +297,73 @@ class CoursesRepoImpl implements CoursesRepo {
         );
       }).toList();
       return Right(leaderboard);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, void>> rateCourse(String courseId, double rating) async {
+    try {
+      final courseRef = _firestore.collection('courses').doc(courseId);
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(courseRef);
+        if (!snapshot.exists) throw Exception("Course does not exist!");
+
+        double currentRating = (snapshot.data()?['rating'] ?? 0.0).toDouble();
+        int currentCount = snapshot.data()?['ratingCount'] ?? 0;
+
+        double newRating = ((currentRating * currentCount) + rating) / (currentCount + 1);
+        
+        transaction.update(courseRef, {
+          'rating': newRating,
+          'ratingCount': currentCount + 1,
+        });
+      });
+      return const Right(null);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, List<CommentEntity>>> getLessonComments(String lessonId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('comments')
+          .where('lessonId', isEqualTo: lessonId)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      final comments = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return CommentEntity(
+          id: doc.id,
+          userId: data['userId'],
+          userName: data['userName'],
+          lessonId: data['lessonId'],
+          content: data['content'],
+          timestamp: (data['timestamp'] as Timestamp).toDate(),
+        );
+      }).toList();
+
+      return Right(comments);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, void>> addComment(CommentEntity comment) async {
+    try {
+      await _firestore.collection('comments').doc(comment.id).set({
+        'userId': comment.userId,
+        'userName': comment.userName,
+        'lessonId': comment.lessonId,
+        'content': comment.content,
+        'timestamp': comment.timestamp,
+      });
+      return const Right(null);
     } catch (e) {
       return Left(e.toString());
     }

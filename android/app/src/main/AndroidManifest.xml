@@ -10,7 +10,7 @@
     <application
         android:label="saboura"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/logo"
         android:requestLegacyExternalStorage="true">
 
         <meta-data
@@ -18,7 +18,7 @@
             android:value="saboura_channel_id" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@mipmap/logo" />
 
         <activity
             android:name=".MainActivity"

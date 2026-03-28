@@ -8,12 +8,15 @@ import '../../features/courses/presentation/screens/add_course_screen.dart';
 import '../../features/courses/presentation/screens/add_lessons_screen.dart';
 import '../../features/courses/presentation/screens/add_quiz_screen.dart';
 import '../../features/courses/presentation/screens/quiz_screen.dart';
+import '../../features/courses/presentation/screens/course_details_screen.dart';
+import '../../features/courses/presentation/screens/lesson_viewer_screen.dart';
 import '../../features/home/presentation/screens/teacher_main_layout.dart';
 import '../../features/home/presentation/screens/student_main_layout.dart';
 import '../../features/courses/presentation/screens/student_dashboard_screen.dart';
 import '../../features/courses/presentation/screens/leaderboard_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/courses/domain/entities/quiz_entity.dart';
+import '../../features/courses/domain/entities/course_entity.dart';
 import 'routes.dart';
 
 class AppRouter {
@@ -39,6 +42,14 @@ class AppRouter {
         );
       case Routes.addQuizScreen:
         return MaterialPageRoute(builder: (_) => const AddQuizScreen());
+      case Routes.courseDetailsScreen:
+        return MaterialPageRoute(
+          builder: (_) => CourseDetailsScreen(course: arguments as CourseEntity),
+        );
+      case Routes.lessonViewerScreen:
+        return MaterialPageRoute(
+          builder: (_) => LessonViewerScreen(lesson: arguments as LessonEntity),
+        );
       case Routes.teacherDashboardScreen:
         return MaterialPageRoute(builder: (_) => const TeacherMainLayout());
       case Routes.studentHomeScreen:
@@ -50,8 +61,13 @@ class AppRouter {
       case Routes.settingsScreen:
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
       case Routes.quizScreen:
+        final args = arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => QuizScreen(quiz: arguments as QuizEntity),
+          builder: (_) => QuizScreen(
+            quiz: args['quiz'] as QuizEntity,
+            courseId: args['courseId'] as String,
+            lessonId: args['lessonId'] as String,
+          ),
         );
       case Routes.homeScreen:
         return MaterialPageRoute(
