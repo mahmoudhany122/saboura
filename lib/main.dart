@@ -17,25 +17,18 @@ import 'features/courses/presentation/logic/courses_cubit.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  try {
-    // Basic initializations
-    await EasyLocalization.ensureInitialized();
-    await CacheHelper.init();
-    
-    // Firebase with timeout to prevent hanging on splash
-    await Firebase.initializeApp().timeout(const Duration(seconds: 15));
-    
-    // Dependency Injection
-    await di.init();
-    
-    // Optional services in background
-    NotificationHelper.init();
-    
-    Bloc.observer = MyBlocObserver();
-  } catch (e) {
-    debugPrint("Initialization Error: $e");
-  }
-
+  // Core Services
+  await EasyLocalization.ensureInitialized();
+  await CacheHelper.init();
+  
+  // These MUST be awaited to avoid GetIt errors during provider creation
+  await Firebase.initializeApp();
+  await di.init();
+  
+  // Optional services can run in background
+  NotificationHelper.init();
+  
+  Bloc.observer = MyBlocObserver();
   bool isDark = CacheHelper.getData(key: 'isDark') ?? false;
 
   runApp(
@@ -46,15 +39,9 @@ void main() async {
       startLocale: const Locale('ar'),
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(
-            create: (context) => AppCubit()..changeTheme(fromCache: isDark),
-          ),
-          BlocProvider(
-            create: (context) => di.sl<AuthCubit>(),
-          ),
-          BlocProvider(
-            create: (context) => di.sl<CoursesCubit>(),
-          ),
+          BlocProvider(create: (context) => AppCubit()..changeTheme(fromCache: isDark)),
+          BlocProvider(create: (context) => di.sl<AuthCubit>()),
+          BlocProvider(create: (context) => di.sl<CoursesCubit>()),
         ],
         child: SabouraApp(appRouter: AppRouter()),
       ),

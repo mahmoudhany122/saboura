@@ -4,8 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../../../core/helpers/cache_helper.dart';
 import '../../../../core/helpers/spacing.dart';
+import '../../../../core/helpers/gemini_helper.dart';
+import '../../../../core/theming/colors.dart';
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/comment_entity.dart';
 import '../logic/courses_cubit.dart';
@@ -39,11 +42,6 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
           flags: const YoutubePlayerFlags(
             autoPlay: true,
             mute: false,
-            disableDragSeek: false,
-            loop: false,
-            isLive: false,
-            forceHD: false,
-            enableCaption: true,
           ),
         );
       }
@@ -57,46 +55,46 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
     super.dispose();
   }
 
+  void _showAiTutor() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AiChatBottomSheet(lessonTitle: widget.lesson.title),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return YoutubePlayerBuilder(
       player: YoutubePlayer(
         controller: _youtubeController!,
         showVideoProgressIndicator: true,
-        progressIndicatorColor: Colors.red,
-        progressColors: const ProgressBarColors(
-          playedColor: Colors.red,
-          handleColor: Colors.redAccent,
-        ),
       ),
       builder: (context, player) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(widget.lesson.title),
-            elevation: 0,
+          appBar: AppBar(title: Text(widget.lesson.title), elevation: 0),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _showAiTutor,
+            backgroundColor: Colors.purple,
+            child: const Icon(Icons.psychology, color: Colors.white, size: 35),
           ),
           body: Column(
             children: [
-              player, // The Video Player
+              player,
               Expanded(
                 child: SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('وصف الدرس', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                        verticalSpace(8),
-                        const Text('مشاهدة ممتعة! لا تتردد في ترك سؤالك في التعليقات بالأسفل.', style: TextStyle(color: Colors.grey)),
-                        verticalSpace(24),
-                        const Divider(),
-                        Text('التعليقات والأسئلة', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
-                        verticalSpace(16),
-                        _buildCommentInput(),
-                        verticalSpace(20),
-                        _buildCommentsList(),
-                      ],
-                    ),
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('وصف الدرس', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                      verticalSpace(8),
+                      const Text('مشاهدة ممتعة! اضغط على أيقونة الذكاء الاصطناعي لسؤالي عن أي شيء يصعب عليك. 🤖'),
+                      verticalSpace(24),
+                      const Divider(),
+                      _buildCommentsSection(),
+                    ],
                   ),
                 ),
               ),
@@ -104,6 +102,19 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCommentsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('التعليقات', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+        verticalSpace(16),
+        _buildCommentInput(),
+        verticalSpace(20),
+        _buildCommentsList(),
+      ],
     );
   }
 
@@ -116,15 +127,10 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
             decoration: InputDecoration(
               hintText: 'اكتب سؤالك هنا...',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             ),
           ),
         ),
-        horizontalSpace(10),
-        IconButton(
-          onPressed: _sendComment,
-          icon: const Icon(Icons.send, color: Colors.blue),
-        ),
+        IconButton(onPressed: _sendComment, icon: const Icon(Icons.send, color: Colors.blue)),
       ],
     );
   }
@@ -132,17 +138,14 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
   void _sendComment() {
     if (_commentController.text.isNotEmpty) {
       final uId = CacheHelper.getData(key: 'uId');
-      final userName = CacheHelper.getData(key: 'userName') ?? 'طالب';
-      
       final comment = CommentEntity(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: uId,
-        userName: userName,
+        id: DateTime.now().toString(),
+        userId: uId!,
+        userName: CacheHelper.getData(key: 'userName') ?? 'طالب',
         lessonId: widget.lesson.id,
         content: _commentController.text,
         timestamp: DateTime.now(),
       );
-      
       context.read<CoursesCubit>().addComment(comment);
       _commentController.clear();
     }
@@ -152,33 +155,121 @@ class _LessonViewerScreenState extends State<LessonViewerScreen> {
     return BlocBuilder<CoursesCubit, CoursesState>(
       builder: (context, state) {
         final comments = context.read<CoursesCubit>().lessonComments;
-        if (comments.isEmpty) return const Center(child: Text('لا توجد تعليقات بعد. كن أول من يسأل!'));
-        
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: comments.length,
           itemBuilder: (context, index) {
             final comment = comments[index];
-            return Container(
-              margin: EdgeInsets.only(bottom: 12.h),
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(comment.userName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                  verticalSpace(4),
-                  Text(comment.content),
-                ],
-              ),
+            return ListTile(
+              title: Text(comment.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(comment.content),
             );
           },
         );
       },
+    );
+  }
+}
+
+class AiChatBottomSheet extends StatefulWidget {
+  final String lessonTitle;
+  const AiChatBottomSheet({super.key, required this.lessonTitle});
+
+  @override
+  State<AiChatBottomSheet> createState() => _AiChatBottomSheetState();
+}
+
+class _AiChatBottomSheetState extends State<AiChatBottomSheet> {
+  final List<Map<String, String>> _messages = [];
+  final TextEditingController _controller = TextEditingController();
+  bool _isLoading = false;
+
+  void _sendMessage() async {
+    if (_controller.text.isEmpty) return;
+
+    final userMessage = _controller.text;
+    setState(() {
+      _messages.add({'role': 'user', 'content': userMessage});
+      _isLoading = true;
+    });
+    _controller.clear();
+
+    final response = await GeminiHelper.getAiResponse(userMessage, widget.lessonTitle);
+
+    setState(() {
+      _messages.add({'role': 'ai', 'content': response});
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      padding: EdgeInsets.all(20.w),
+      child: Column(
+        children: [
+          Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+          verticalSpace(15),
+          Row(
+            children: [
+              const CircleAvatar(backgroundColor: Colors.purple, child: Icon(Icons.psychology, color: Colors.white)),
+              horizontalSpace(10),
+              Text('سبورة الذكي 🤖', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                bool isUser = msg['role'] == 'user';
+                return FadeInUp(
+                  child: Align(
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: EdgeInsets.symmetric(vertical: 5.h),
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: isUser ? ColorsManager.mainBlue : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Text(msg['content']!, style: TextStyle(color: isUser ? Colors.white : Colors.black)),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (_isLoading) const LinearProgressIndicator(color: Colors.purple),
+          verticalSpace(10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'اسأل سبورة الذكي...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                ),
+              ),
+              horizontalSpace(10),
+              CircleAvatar(
+                backgroundColor: Colors.purple,
+                child: IconButton(onPressed: _sendMessage, icon: const Icon(Icons.send, color: Colors.white)),
+              ),
+            ],
+          ),
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+        ],
+      ),
     );
   }
 }

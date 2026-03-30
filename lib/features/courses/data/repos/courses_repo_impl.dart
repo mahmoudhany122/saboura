@@ -6,6 +6,9 @@ import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
 import '../../domain/entities/leaderboard_entity.dart';
 import '../../domain/entities/comment_entity.dart';
+import '../../domain/entities/notification_entity.dart';
+import '../../domain/entities/enrollment_entity.dart';
+import '../../domain/entities/message_entity.dart';
 import '../../domain/repos/courses_repo.dart';
 import '../models/course_model.dart';
 
@@ -86,7 +89,6 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, void>> enrollInCourse(String userId, String courseId) async {
     try {
-      // Get User Name for enrollment record
       final userDoc = await _firestore.collection('users').doc(userId).get();
       final userName = userDoc.data()?['name'] ?? 'طالب';
 
@@ -99,13 +101,9 @@ class CoursesRepoImpl implements CoursesRepo {
         'completedLessons': [],
       };
 
-      // 1. Save in user's profile
       await _firestore.collection('users').doc(userId).collection('enrolled_courses').doc(courseId).set(enrollmentData);
-      
-      // 2. Save in global enrollments for teacher tracking
       await _firestore.collection('enrollments').doc('${userId}_${courseId}').set(enrollmentData);
 
-      // 3. Update course stats
       await _firestore.collection('courses').doc(courseId).update({
         'enrollmentCount': FieldValue.increment(1),
       });
@@ -144,7 +142,6 @@ class CoursesRepoImpl implements CoursesRepo {
       final snapshot = await _firestore
           .collection('quiz_results')
           .where('userId', isEqualTo: userId)
-          .orderBy('timestamp', descending: true)
           .get();
 
       final results = snapshot.docs.map((doc) {
@@ -159,11 +156,13 @@ class CoursesRepoImpl implements CoursesRepo {
           score: data['score'],
           totalQuestions: data['totalQuestions'],
           timestamp: (data['timestamp'] as Timestamp).toDate(),
+          userAnswers: List<int>.from(data['userAnswers'] ?? []),
         );
       }).toList();
 
       return Right(results);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -192,6 +191,7 @@ class CoursesRepoImpl implements CoursesRepo {
         'score': result.score,
         'totalQuestions': result.totalQuestions,
         'timestamp': result.timestamp,
+        'userAnswers': result.userAnswers,
       });
       return const Right(null);
     } catch (e) {
@@ -202,19 +202,8 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, List<QuizResultEntity>>> getTeacherQuizResults(String teacherId) async {
     try {
-      final coursesSnapshot = await _firestore
-          .collection('courses')
-          .where('teacherId', isEqualTo: teacherId)
-          .get();
-      
-      final courseIds = coursesSnapshot.docs.map((doc) => doc.id).toList();
-      
-      if (courseIds.isEmpty) return const Right([]);
-
       final resultsSnapshot = await _firestore
           .collection('quiz_results')
-          .where('courseId', whereIn: courseIds)
-          .orderBy('timestamp', descending: true)
           .get();
 
       final results = resultsSnapshot.docs.map((doc) {
@@ -229,11 +218,13 @@ class CoursesRepoImpl implements CoursesRepo {
           score: data['score'],
           totalQuestions: data['totalQuestions'],
           timestamp: (data['timestamp'] as Timestamp).toDate(),
+          userAnswers: List<int>.from(data['userAnswers'] ?? []),
         );
       }).toList();
 
       return Right(results);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -298,6 +289,7 @@ class CoursesRepoImpl implements CoursesRepo {
       }).toList();
       return Right(leaderboard);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -332,7 +324,6 @@ class CoursesRepoImpl implements CoursesRepo {
       final snapshot = await _firestore
           .collection('comments')
           .where('lessonId', isEqualTo: lessonId)
-          .orderBy('timestamp', descending: true)
           .get();
 
       final comments = snapshot.docs.map((doc) {
@@ -349,6 +340,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(comments);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -365,6 +357,125 @@ class CoursesRepoImpl implements CoursesRepo {
       });
       return const Right(null);
     } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, List<NotificationEntity>>> getNotifications(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .get();
+
+      final notifications = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return NotificationEntity(
+          id: doc.id,
+          title: data['title'],
+          body: data['body'],
+          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          isRead: data['isRead'] ?? false,
+        );
+      }).toList();
+
+      return Right(notifications);
+    } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, void>> markNotificationAsRead(String userId, String notificationId) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .doc(notificationId)
+          .update({'isRead': true});
+      return const Right(null);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, List<EnrollmentEntity>>> getCourseEnrollments(String teacherId) async {
+    try {
+      final coursesSnapshot = await _firestore.collection('courses').where('teacherId', isEqualTo: teacherId).get();
+      final courseIds = coursesSnapshot.docs.map((doc) => doc.id).toList();
+
+      if (courseIds.isEmpty) return const Right([]);
+
+      final enrollmentsSnapshot = await _firestore.collection('enrollments').where('courseId', whereIn: courseIds).get();
+
+      final enrollments = enrollmentsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return EnrollmentEntity(
+          userId: data['userId'],
+          userName: data['userName'],
+          courseId: data['courseId'],
+          enrolledAt: (data['enrolledAt'] as Timestamp).toDate(),
+          progress: (data['progress'] ?? 0.0).toDouble(),
+          completedLessons: List<String>.from(data['completedLessons'] ?? []),
+        );
+      }).toList();
+
+      return Right(enrollments);
+    } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, void>> sendMessage(MessageEntity message) async {
+    try {
+      await _firestore.collection('chats').doc(message.id).set({
+        'senderId': message.senderId,
+        'senderName': message.senderName,
+        'receiverId': message.receiverId,
+        'content': message.content,
+        'timestamp': message.timestamp,
+      });
+      return const Right(null);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, List<MessageEntity>>> getChatMessages(String userId, String otherId) async {
+    try {
+      // Fetch messages where (sender is me AND receiver is him) OR (sender is him AND receiver is me)
+      final snapshot = await _firestore
+          .collection('chats')
+          .where('senderId', whereIn: [userId, otherId])
+          .orderBy('timestamp', descending: false)
+          .get();
+
+      final messages = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return MessageEntity(
+          id: doc.id,
+          senderId: data['senderId'],
+          senderName: data['senderName'],
+          receiverId: data['receiverId'],
+          content: data['content'],
+          timestamp: (data['timestamp'] as Timestamp).toDate(),
+        );
+      }).where((msg) => 
+        (msg.senderId == userId && msg.receiverId == otherId) || 
+        (msg.senderId == otherId && msg.receiverId == userId)
+      ).toList();
+
+      return Right(messages);
+    } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }

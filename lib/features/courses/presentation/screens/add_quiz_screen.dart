@@ -5,6 +5,7 @@ import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../../../core/helpers/spacing.dart';
 import '../../domain/entities/quiz_entity.dart';
+import '../widgets/quiz_game_element.dart';
 
 class AddQuizScreen extends StatefulWidget {
   const AddQuizScreen({super.key});
@@ -18,6 +19,17 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
   final TextEditingController _quizTitleController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
   final List<QuestionEntity> _questions = [];
+  QuizTheme previewTheme = QuizTheme.classic;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Get the selected theme from parent course settings if available
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic> && args.containsKey('quizTheme')) {
+      previewTheme = args['quizTheme'] as QuizTheme;
+    }
+  }
 
   void _addNewQuestion() {
     showModalBottomSheet(
@@ -52,6 +64,23 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Added Game Element Preview inside the question builder
+                          Container(
+                            height: 100.h,
+                            margin: EdgeInsets.symmetric(vertical: 10.h),
+                            decoration: BoxDecoration(
+                              color: ColorsManager.mainBlue.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: QuizGameElement(
+                              theme: previewTheme,
+                              progress: 0.5, // Preview state
+                              isAnswered: true,
+                              isCorrect: true,
+                              questionText: questionText.isEmpty ? 'معاينة السؤال هنا' : questionText,
+                            ),
+                          ),
+                          verticalSpace(10),
                           Text('نص السؤال:', style: TextStyles.font14GrayRegular),
                           verticalSpace(10),
                           TextField(
@@ -63,7 +92,7 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
                               filled: true,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                             ),
-                            onChanged: (v) => questionText = v,
+                            onChanged: (v) => setState(() => questionText = v),
                           ),
                           verticalSpace(30),
                           Text('الاختيارات والإجابة الصحيحة:', style: TextStyles.font14GrayRegular),
@@ -147,6 +176,23 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Theme Preview Bar at the top
+              Container(
+                margin: EdgeInsets.only(bottom: 20.h),
+                padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 15.w),
+                decoration: BoxDecoration(
+                  color: ColorsManager.mainBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, color: ColorsManager.mainBlue),
+                    horizontalSpace(10),
+                    Text('اللعبة الحالية: ${previewTheme.name.toUpperCase()}', 
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: ColorsManager.mainBlue)),
+                  ],
+                ),
+              ),
               Container(
                 padding: EdgeInsets.all(15.w),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
@@ -220,6 +266,7 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
                       title: _quizTitleController.text,
                       durationInMinutes: int.parse(_durationController.text),
                       questions: _questions,
+                      theme: previewTheme,
                     );
                     Navigator.pop(context, quiz);
                   }

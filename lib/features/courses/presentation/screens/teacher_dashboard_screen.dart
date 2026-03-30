@@ -59,21 +59,28 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
       ),
       body: BlocBuilder<CoursesCubit, CoursesState>(
         builder: (context, state) {
-          if (state is CoursesLoading) return const Center(child: CircularProgressIndicator());
+          final cubit = context.read<CoursesCubit>();
+          final courses = cubit.teacherCourses;
+
+          if (state is CoursesLoading && courses.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
           
-          final courses = context.read<CoursesCubit>().teacherCourses;
-          
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildWelcomeHeader(userName),
-                SizedBox(height: 30.h),
-                Text('إدارة المحتوى والطلاب', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
-                SizedBox(height: 15.h),
-                courses.isEmpty ? _buildEmptyState() : _buildCoursesList(courses),
-              ],
+          return RefreshIndicator(
+            onRefresh: () async => _loadCourses(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeHeader(userName),
+                  SizedBox(height: 30.h),
+                  Text('إدارة المحتوى والطلاب', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
+                  SizedBox(height: 15.h),
+                  courses.isEmpty ? _buildEmptyState() : _buildCoursesList(courses),
+                ],
+              ),
             ),
           );
         },
@@ -84,6 +91,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   Widget _buildWelcomeHeader(String userName) {
     return FadeInDown(
       child: Container(
+        width: double.infinity,
         padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
           color: ColorsManager.mainBlue,
@@ -107,12 +115,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: courses.length,
       itemBuilder: (context, index) {
+        final course = courses[index];
         return FadeInUp(
           delay: Duration(milliseconds: 100 * index),
           child: Column(
             children: [
-              TeacherCourseItem(course: courses[index]),
-              _buildCourseStatsRow(courses[index]),
+              TeacherCourseItem(course: course),
+              _buildCourseStatsRow(course),
               const SizedBox(height: 20),
             ],
           ),
@@ -123,34 +132,41 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
 
   Widget _buildCourseStatsRow(CourseEntity course) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
         border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 5))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _statItem(Icons.people, '${course.enrollmentCount} طالب'),
-          _statItem(Icons.comment, 'تعليقات الطلاب'),
-          _statItem(Icons.analytics, 'التقارير', color: Colors.blue, onTap: () {
-            Navigator.pushNamed(context, Routes.quizResultsScreen); // Link to analytics
+          _statItem(Icons.people, '${course.enrollmentCount} طالب', Colors.grey),
+          _statItem(Icons.comment, 'التعليقات', Colors.orange, onTap: () {
+            // Future: Navigate to Course Comments
+          }),
+          _statItem(Icons.analytics, 'التقارير', Colors.blue, onTap: () {
+            Navigator.pushNamed(context, Routes.quizResultsScreen);
           }),
         ],
       ),
     );
   }
 
-  Widget _statItem(IconData icon, String label, {Color color = Colors.grey, VoidCallback? onTap}) {
+  Widget _statItem(IconData icon, String label, Color color, {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
-        ],
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 12.sp, color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

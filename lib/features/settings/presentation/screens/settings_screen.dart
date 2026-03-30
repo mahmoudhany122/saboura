@@ -1,134 +1,158 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:animate_do/animate_do.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/helpers/cache_helper.dart';
-import '../../../../core/logic/app_cubit.dart';
+import '../../../../core/helpers/spacing.dart';
 import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
+import '../../../../core/helpers/image_upload_helper.dart';
+import '../../../auth/presentation/logic/auth_cubit.dart';
+import '../../../courses/presentation/logic/courses_cubit.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Center(child: Text('settings'.tr())),
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
 
-      ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool isNotificationsEnabled = true;
+  String? profilePic;
+  bool isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    profilePic = CacheHelper.getData(key: 'profileImageUrl');
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (pickedFile != null) {
+      setState(() => isUploading = true);
+      final file = File(pickedFile.path);
+      
+      // Upload to ImgBB for free storage
+      final url = await ImageUploadHelper.uploadImage(file);
+      
+      if (url != null) {
+        setState(() {
+          profilePic = url;
+          isUploading = false;
+        });
+        await CacheHelper.setData(key: 'profileImageUrl', value: url);
+        // Here you would also update Firestore user profile
+      } else {
+        setState(() => isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String userName = CacheHelper.getData(key: 'userName') ?? 'مستخدم';
+    String userRole = CacheHelper.getData(key: 'role') ?? 'student';
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('الإعدادات والملف الشخصي'), centerTitle: true),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(20.w),
         child: Column(
           children: [
-            // Theme Toggle
-            FadeInLeft(
-              child: _buildSettingTile(
-                icon: Icons.dark_mode_outlined,
-                title: 'الوضع المظلم',
-                trailing: BlocBuilder<AppCubit, AppState>(
-                  builder: (context, state) {
-                    return Switch(
-                      value: context.read<AppCubit>().isDark,
-                      onChanged: (value) {
-                        context.read<AppCubit>().changeTheme();
-                      },
-                      activeColor: ColorsManager.mainBlue,
-                    );
-                  },
-                ),
-              ),
-            ),
-            SizedBox(height: 15.h),
-            
-            // Language Toggle
-            FadeInRight(
-              child: _buildSettingTile(
-                icon: Icons.language_outlined,
-                title: 'اللغة (Language)',
-                trailing: TextButton(
-                  onPressed: () {
-                    if (context.locale == const Locale('ar')) {
-                      context.setLocale(const Locale('en'));
-                    } else {
-                      context.setLocale(const Locale('ar'));
-                    }
-                  },
-                  child: Text(
-                    context.locale == const Locale('ar') ? 'English' : 'العربية',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-            
-            SizedBox(height: 15.h),
-            
-            // Profile Info (Static for now)
-            FadeInLeft(
-              child: _buildSettingTile(
-                icon: Icons.person_outline,
-                title: 'تعديل الملف الشخصي',
-                onTap: () {},
-              ),
-            ),
-            SizedBox(height: 15.h),
-
-            // logout
-            FadeInRight(
-              child: _buildSettingTile(
-                icon:  Icons.logout,
-                title: 'تسجيل الخروج'.tr(),
-                  onTap: () {
-                    CacheHelper.clearData();
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, Routes.loginScreen, (route) => false);
-                  },
-                ),
-              ),
-
-            SizedBox(height: 15.h),
-            const Spacer(),
-            
-            // App Version Info
-            FadeInUp(
-              child: Column(
-                children: [
-                  Text('تطبيق سبوره', style: TextStyles.font14DarkBlueMedium),
-                  Text('v 1.0.0', style: TextStyles.font13GrayRegular),
-                ],
-              ),
-            ),
-            SizedBox(height: 20.h),
+            _buildProfileHeader(userName, userRole),
+            verticalSpace(30),
+            _buildSettingsSection(),
+            verticalSpace(40),
+            _buildLogoutButton(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSettingTile({
-    required IconData icon,
-    required String title,
-    Widget? trailing,
-    VoidCallback? onTap,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        padding: EdgeInsets.all(8.w),
-        decoration: BoxDecoration(
-          color: ColorsManager.mainBlue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: ColorsManager.mainBlue),
+  Widget _buildProfileHeader(String name, String role) {
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
       ),
-      title: Text(title, style: TextStyles.font14DarkBlueMedium),
-      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: const BorderSide(color: ColorsManager.lighterGray),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              CircleAvatar(
+                radius: 50.r,
+                backgroundColor: ColorsManager.moreLightGray,
+                backgroundImage: profilePic != null ? NetworkImage(profilePic!) : null,
+                child: profilePic == null ? Icon(Icons.person, size: 50.r, color: Colors.grey) : null,
+              ),
+              if (isUploading) const CircularProgressIndicator(),
+              CircleAvatar(
+                backgroundColor: ColorsManager.mainBlue,
+                radius: 18.r,
+                child: IconButton(
+                  icon: Icon(Icons.camera_alt, size: 18.r, color: Colors.white),
+                  onPressed: _pickImage,
+                ),
+              ),
+            ],
+          ),
+          verticalSpace(15),
+          Text(name, style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 20.sp, fontWeight: FontWeight.bold)),
+          Text(role == 'teacher' ? 'معلم معتمد 🎓' : 'طالب مجتهد 🌟', style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection() {
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        children: [
+          _settingsTile(Icons.notifications_active_outlined, 'تفعيل التنبيهات', isSwitch: true),
+          const Divider(height: 1),
+          _settingsTile(Icons.language_outlined, 'لغة التطبيق', trailing: 'العربية'),
+          const Divider(height: 1),
+          _settingsTile(Icons.dark_mode_outlined, 'الوضع الليلي', isSwitch: true, initialValue: false),
+          const Divider(height: 1),
+          _settingsTile(Icons.info_outline, 'عن منصه سبورة'),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsTile(IconData icon, String title, {bool isSwitch = false, bool initialValue = true, String? trailing}) {
+    return ListTile(
+      leading: Icon(icon, color: ColorsManager.mainBlue),
+      title: Text(title, style: TextStyle(fontSize: 14.sp)),
+      trailing: isSwitch 
+        ? Switch(value: initialValue, onChanged: (v){}, activeColor: ColorsManager.mainBlue)
+        : (trailing != null ? Text(trailing, style: const TextStyle(color: Colors.grey)) : const Icon(Icons.arrow_forward_ios, size: 14)),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () {
+        CacheHelper.clearData();
+        Navigator.pushNamedAndRemoveUntil(context, Routes.loginScreen, (route) => false);
+      },
+      icon: const Icon(Icons.logout, color: Colors.red),
+      label: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size(double.infinity, 56.h),
+        side: const BorderSide(color: Colors.red),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

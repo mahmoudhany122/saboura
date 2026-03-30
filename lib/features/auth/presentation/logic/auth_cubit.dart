@@ -14,9 +14,14 @@ class AuthCubit extends Cubit<AuthState> {
     result.fold(
       (error) => emit(AuthError(error: error)),
       (user) async {
+        // Essential Cache updates
         await CacheHelper.setData(key: 'uId', value: user.uId);
-        await CacheHelper.setData(key: 'role', value: user.role);
         await CacheHelper.setData(key: 'userName', value: user.name);
+        
+        if (user.role.isNotEmpty) {
+          await CacheHelper.setData(key: 'role', value: user.role);
+        }
+        
         emit(AuthSuccess(user));
       },
     );
@@ -40,6 +45,7 @@ class AuthCubit extends Cubit<AuthState> {
       (user) async {
         await CacheHelper.setData(key: 'uId', value: user.uId);
         await CacheHelper.setData(key: 'userName', value: user.name);
+        // Role is empty for new users, will be set in RoleSelectionScreen
         emit(AuthSuccess(user));
       },
     );
@@ -52,8 +58,12 @@ class AuthCubit extends Cubit<AuthState> {
       (error) => emit(AuthError(error: error)),
       (user) async {
         await CacheHelper.setData(key: 'uId', value: user.uId);
-        await CacheHelper.setData(key: 'role', value: user.role);
         await CacheHelper.setData(key: 'userName', value: user.name);
+        
+        if (user.role.isNotEmpty) {
+          await CacheHelper.setData(key: 'role', value: user.role);
+        }
+
         emit(AuthSuccess(user));
       },
     );

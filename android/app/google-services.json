@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "686475805422-9fpmn4g2v2p2vfliba9s5pql9g7ovbh1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.saboura",
+            "certificate_hash": "a50c7c7f59527088912bf511c61df2a95fd35b1f"
+          }
+        },
+        {
           "client_id": "686475805422-ipcldffbpid7mliim70rv3b8bir1fued.apps.googleusercontent.com",
           "client_type": 3
         }

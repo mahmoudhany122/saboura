@@ -7,6 +7,12 @@ class UserModel extends UserEntity {
     required super.name,
     required super.phone,
     required super.role,
+    super.fcmToken,
+    super.profileImageUrl,
+    super.points,
+    super.streak,
+    super.badges,
+    super.lastLoginDate,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -16,6 +22,14 @@ class UserModel extends UserEntity {
       name: json['name'],
       phone: json['phone'],
       role: json['role'],
+      fcmToken: json['fcmToken'],
+      profileImageUrl: json['profileImageUrl'],
+      points: json['points'] ?? 0,
+      streak: json['streak'] ?? 0,
+      badges: List<String>.from(json['badges'] ?? []),
+      lastLoginDate: json['lastLoginDate'] != null 
+          ? DateTime.parse(json['lastLoginDate']) 
+          : null,
     );
   }
 
@@ -26,6 +40,12 @@ class UserModel extends UserEntity {
       'name': name,
       'phone': phone,
       'role': role,
+      'fcmToken': fcmToken,
+      'profileImageUrl': profileImageUrl,
+      'points': points,
+      'streak': streak,
+      'badges': badges,
+      'lastLoginDate': lastLoginDate?.toIso8601String(),
     };
   }
 }

@@ -17,4 +17,8 @@ class Routes {
   static const String courseDetailsScreen = '/courseDetailsScreen';
   static const String lessonViewerScreen = '/lessonViewerScreen';
   static const String quizResultsScreen = '/quizResultsScreen';
+  static const String quizReviewScreen = '/quizReviewScreen';
+  static const String parentDashboardScreen = '/parentDashboardScreen';
+  static const String notificationScreen = '/notificationScreen';
+  static const String chatScreen = '/chatScreen';
 }

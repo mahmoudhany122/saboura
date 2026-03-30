@@ -27,6 +27,13 @@ class _LessonFormDialogState extends State<LessonFormDialog> {
   String? videoUrl;
   String? pdfUrl;
   QuizEntity? quiz;
+  final TextEditingController _pdfUrlController = TextEditingController();
+
+  @override
+  void dispose() {
+    _pdfUrlController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,18 +55,22 @@ class _LessonFormDialogState extends State<LessonFormDialog> {
               color: Colors.red,
               onTap: () => _showInputDialog('رابط الفيديو', (v) => setState(() => videoUrl = v)),
             ),
+            
+            // PDF Section with two options: Upload or Link
+            const Divider(),
             _buildSubOption(
               icon: Icons.picture_as_pdf,
-              label: pdfUrl != null ? '✅ تم رفع ملف PDF' : 'رفع ملف PDF',
+              label: pdfUrl != null ? '✅ تم إضافة الملف' : 'إضافة ملف PDF',
               color: Colors.orange,
-              onTap: () => widget.onPickPdf(setState, (url) => setState(() => pdfUrl = url)),
+              onTap: () => _showPdfOptions(),
             ),
+            
             _buildSubOption(
               icon: Icons.quiz,
               label: quiz != null ? '✅ تم بناء الاختبار' : 'إضافة اختبار',
               color: Colors.green,
               onTap: () async {
-                final result = await Navigator.pushNamed(context, Routes.addQuizScreen);
+                final result = await Navigator.pushNamed(context, Routes.addQuizScreen, arguments: {'quizTheme': QuizTheme.classic});
                 if (result != null && result is QuizEntity) {
                   setState(() => quiz = result);
                 }
@@ -90,6 +101,35 @@ class _LessonFormDialogState extends State<LessonFormDialog> {
     );
   }
 
+  void _showPdfOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.upload_file, color: Colors.orange),
+            title: const Text('رفع ملف من الجهاز (يستهلك مساحة)'),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onPickPdf(setState, (url) => setState(() => pdfUrl = url));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.link, color: Colors.blue),
+            title: const Text('وضع رابط خارجي (جوجل درايف / ميديا فاير)'),
+            onTap: () {
+              Navigator.pop(context);
+              _showInputDialog('رابط ملف PDF', (v) => setState(() => pdfUrl = v));
+            },
+          ),
+          verticalSpace(20),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubOption(
       {required IconData icon,
       required String label,
@@ -109,10 +149,12 @@ class _LessonFormDialogState extends State<LessonFormDialog> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: TextField(onChanged: (v) => value = v),
+        content: TextField(
+          decoration: const InputDecoration(hintText: 'ضع الرابط المباشر هنا...'),
+          onChanged: (v) => value = v
+        ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
           ElevatedButton(
               onPressed: () {
                 if (value.isNotEmpty) {

@@ -1,6 +1,7 @@
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/quiz_result_entity.dart';
 import '../../domain/entities/leaderboard_entity.dart';
+import '../../domain/entities/notification_entity.dart';
 
 abstract class CoursesState {
   const CoursesState();
@@ -32,6 +33,11 @@ class QuizResultsLoaded extends CoursesState {
 class LeaderboardLoaded extends CoursesState {
   final List<LeaderboardEntity> leaderboard;
   const LeaderboardLoaded(this.leaderboard);
+}
+
+class NotificationsLoaded extends CoursesState {
+  final List<NotificationEntity> notifications;
+  const NotificationsLoaded(this.notifications);
 }
 
 class LessonStatusUpdated extends CoursesState {

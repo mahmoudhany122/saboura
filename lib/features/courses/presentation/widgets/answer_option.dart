@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../core/theming/colors.dart';
+import 'package:animate_do/animate_do.dart';
+import '../../domain/entities/quiz_entity.dart';
 
 class AnswerOption extends StatelessWidget {
   final int index;
@@ -9,6 +10,7 @@ class AnswerOption extends StatelessWidget {
   final bool isCorrect;
   final bool isSelected;
   final VoidCallback onTap;
+  final QuizTheme theme;
 
   const AnswerOption({
     super.key,
@@ -18,81 +20,132 @@ class AnswerOption extends StatelessWidget {
     required this.isCorrect,
     required this.isSelected,
     required this.onTap,
+    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
-    Color cardColor = Colors.white;
-    if (isAnswered) {
-      if (isCorrect) {
-        cardColor = Colors.green.shade50;
-      } else if (isSelected) {
-        cardColor = Colors.red.shade50;
-      }
+    // Standard UI for classic theme
+    if (theme == QuizTheme.classic) {
+      return _buildClassicOption();
     }
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
+    // Gamified UI for other themes
+    return _buildGamifiedOption();
+  }
+
+  Widget _buildClassicOption() {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          color: _getBackgroundColor(),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: _getBorderColor(), width: 2),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: _getBorderColor(),
+              child: Text('${String.fromCharCode(65 + index)}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(width: 15.w),
+            Expanded(child: Text(optionText, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGamifiedOption() {
+    return FadeInUp(
+      delay: Duration(milliseconds: index * 200),
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: EdgeInsets.all(18.w),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isAnswered
-                  ? (isCorrect
-                      ? Colors.green
-                      : (isSelected ? Colors.red : ColorsManager.lighterGray))
-                  : ColorsManager.lighterGray,
-              width: 2.5,
-            ),
-          ),
-          child: Row(
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 8.h),
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Container(
-                width: 35.w,
-                height: 35.w,
-                decoration: BoxDecoration(
-                  color: isAnswered
-                      ? (isCorrect
-                          ? Colors.green
-                          : (isSelected ? Colors.red : ColorsManager.moreLightGray))
-                      : ColorsManager.moreLightGray,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    String.fromCharCode(65 + index),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isAnswered && (isCorrect || isSelected)
-                          ? Colors.white
-                          : Colors.black,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 15.w),
-              Expanded(
+              // The Game Shape (Bubble, Banana, Planet)
+              _buildThemeShape(),
+              // The Text
+              Padding(
+                padding: EdgeInsets.all(12.w),
                 child: Text(
                   optionText,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: _getTextColor(),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.sp,
+                    shadows: [Shadow(blurRadius: 2, color: Colors.black.withOpacity(0.3), offset: const Offset(1, 1))],
                   ),
                 ),
               ),
-              if (isAnswered && isCorrect)
-                const Icon(Icons.check_circle, color: Colors.green),
-              if (isAnswered && isSelected && !isCorrect)
-                const Icon(Icons.cancel, color: Colors.red),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildThemeShape() {
+    Color baseColor = _getGamifiedBaseColor();
+    
+    switch (theme) {
+      case QuizTheme.space:
+        return Icon(Icons.circle, size: 80.w, color: baseColor.withOpacity(0.8)); // Planet shape
+      case QuizTheme.monkey:
+        return Icon(Icons.eco, size: 70.w, color: baseColor); // Leaf/Banana shape
+      case QuizTheme.carRacing:
+        return Container(
+          width: 120.w,
+          height: 50.h,
+          decoration: BoxDecoration(
+            color: baseColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white, width: 3),
+          ),
+        ); // Road Sign shape
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Color _getGamifiedBaseColor() {
+    if (isAnswered) {
+      if (isCorrect) return Colors.greenAccent;
+      if (isSelected) return Colors.redAccent;
+    }
+    switch (theme) {
+      case QuizTheme.space: return Colors.blueAccent;
+      case QuizTheme.monkey: return Colors.yellow.shade700;
+      case QuizTheme.carRacing: return Colors.orangeAccent;
+      default: return Colors.white;
+    }
+  }
+
+  Color _getTextColor() {
+    if (theme == QuizTheme.space) return Colors.white;
+    return Colors.black87;
+  }
+
+  Color _getBackgroundColor() {
+    if (!isAnswered) return Colors.white;
+    if (isCorrect) return Colors.green.shade50;
+    if (isSelected) return Colors.red.shade50;
+    return Colors.white;
+  }
+
+  Color _getBorderColor() {
+    if (!isAnswered) return Colors.grey.shade200;
+    if (isCorrect) return Colors.green;
+    if (isSelected) return Colors.red;
+    return Colors.grey.shade200;
   }
 }

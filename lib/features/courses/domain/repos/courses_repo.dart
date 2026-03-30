@@ -4,6 +4,9 @@ import '../entities/course_entity.dart';
 import '../entities/quiz_result_entity.dart';
 import '../entities/leaderboard_entity.dart';
 import '../entities/comment_entity.dart';
+import '../entities/notification_entity.dart';
+import '../entities/enrollment_entity.dart';
+import '../entities/message_entity.dart';
 
 abstract class CoursesRepo {
   Future<Either<String, void>> addCourse(CourseEntity course);
@@ -24,4 +27,15 @@ abstract class CoursesRepo {
   // Comments
   Future<Either<String, List<CommentEntity>>> getLessonComments(String lessonId);
   Future<Either<String, void>> addComment(CommentEntity comment);
+
+  // Notifications
+  Future<Either<String, List<NotificationEntity>>> getNotifications(String userId);
+  Future<Either<String, void>> markNotificationAsRead(String userId, String notificationId);
+
+  // Enrollments for Teacher
+  Future<Either<String, List<EnrollmentEntity>>> getCourseEnrollments(String teacherId);
+
+  // Private Messaging
+  Future<Either<String, void>> sendMessage(MessageEntity message);
+  Future<Either<String, List<MessageEntity>>> getChatMessages(String userId, String otherId);
 }

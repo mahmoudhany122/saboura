@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:confetti/confetti.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import '../../../../core/helpers/cache_helper.dart';
+import '../../../../core/helpers/sound_helper.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../domain/entities/quiz_entity.dart';
@@ -38,14 +41,16 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
   int _remainingTime = 0;
   bool isQuizFinished = false;
   bool hasStarted = false;
+  late ConfettiController _confettiController;
+  final List<int> _userAnswers = []; // To store student's choices
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     _remainingTime = widget.quiz.durationInMinutes * 60;
     
-    // Show warning dialog before starting
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showStartWarning();
     });
@@ -53,7 +58,6 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Anti-cheat: If app goes to background, finish quiz immediately
     if (state == AppLifecycleState.paused && hasStarted && !isQuizFinished) {
       _saveAndShowResult(reason: 'تم إلغاء الاختبار لمحاولة الخروج من التطبيق');
     }
@@ -102,11 +106,18 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
 
   void _checkAnswer(int index) {
     if (isAnswered || isQuizFinished || !hasStarted) return;
+    
+    _userAnswers.add(index); // Record answer
+    bool isCorrect = index == widget.quiz.questions[currentQuestionIndex].correctAnswerIndex;
+    
     setState(() {
       selectedAnswerIndex = index;
       isAnswered = true;
-      if (index == widget.quiz.questions[currentQuestionIndex].correctAnswerIndex) {
+      if (isCorrect) {
         score++;
+        SoundHelper.playCorrect();
+      } else {
+        SoundHelper.playWrong();
       }
     });
 
@@ -130,11 +141,17 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
     setState(() => isQuizFinished = true);
     if (_timer.isActive) _timer.cancel();
 
+    if (reason == null && score >= (widget.quiz.questions.length / 2)) {
+      _confettiController.play();
+      SoundHelper.playSuccess();
+    }
+
     final uId = CacheHelper.getData(key: 'uId');
     final userName = CacheHelper.getData(key: 'userName') ?? 'طالب';
 
     if (uId != null) {
       final result = QuizResultEntity(
+
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: uId,
         userName: userName,
@@ -144,6 +161,7 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
         score: score,
         totalQuestions: widget.quiz.questions.length,
         timestamp: DateTime.now(),
+        userAnswers: _userAnswers, // Save recorded answers
       );
       
       context.read<CoursesCubit>().saveQuizResult(result);
@@ -156,26 +174,37 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(reason ?? 'انتهى الاختبار يا بطل! 🏆', textAlign: TextAlign.center, style: TextStyle(fontSize: 16.sp, color: reason != null ? Colors.red : Colors.black)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(reason != null ? Icons.warning_amber_rounded : Icons.stars, color: reason != null ? Colors.red : Colors.amber, size: 80),
-            SizedBox(height: 20.h),
-            Text('درجتك النهائية هي:', style: TextStyles.font14GrayRegular),
-            Text('$score من ${widget.quiz.questions.length}',
-                style: TextStyles.font24BlackBold.copyWith(color: ColorsManager.mainBlue)),
-          ],
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-              style: ElevatedButton.styleFrom(backgroundColor: ColorsManager.mainBlue),
-              child: const Text('الرجوع للرئيسية', style: TextStyle(color: Colors.white)),
+      builder: (context) => Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(reason ?? 'انتهى الاختبار يا بطل! 🏆', textAlign: TextAlign.center, style: TextStyle(fontSize: 16.sp, color: reason != null ? Colors.red : Colors.black)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(reason != null ? Icons.warning_amber_rounded : Icons.stars, color: reason != null ? Colors.red : Colors.amber, size: 80),
+                SizedBox(height: 20.h),
+                Text('درجتك النهائية هي:', style: TextStyles.font14GrayRegular),
+                Text('$score من ${widget.quiz.questions.length}',
+                    style: TextStyles.font24BlackBold.copyWith(color: ColorsManager.mainBlue)),
+              ],
             ),
+            actions: [
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                  style: ElevatedButton.styleFrom(backgroundColor: ColorsManager.mainBlue),
+                  child: const Text('الرجوع للرئيسية', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+          ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple],
           ),
         ],
       ),
@@ -185,6 +214,7 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _confettiController.dispose();
     if (_timer.isActive) _timer.cancel();
     super.dispose();
   }
@@ -234,54 +264,105 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
           children: [
             if (widget.quiz.theme == QuizTheme.space) _buildSpaceBackground(),
             if (widget.quiz.theme == QuizTheme.desert) _buildDesertBackground(),
+            
             Padding(
               padding: EdgeInsets.all(20.w),
               child: Column(
                 children: [
                   _buildProgressIndicator(),
                   SizedBox(height: 20.h),
+                  
+                  // Question Bubble
                   FadeInDown(
                     key: ValueKey('q_$currentQuestionIndex'),
                     child: Container(
                       width: double.infinity,
-                      padding: EdgeInsets.all(24.w),
+                      padding: EdgeInsets.all(20.w),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(25),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                       ),
                       child: Text(
                         question.questionText,
-                        style: TextStyles.font24BlackBold.copyWith(fontSize: 22.sp),
+                        style: TextStyles.font24BlackBold.copyWith(fontSize: 20.sp),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   ),
+                  
                   SizedBox(height: 20.h),
+                  
+                  // Central Game Element
                   Expanded(
+                    flex: 2,
                     child: QuizGameElement(
                       theme: widget.quiz.theme,
                       progress: progress,
                       isAnswered: isAnswered,
                       isCorrect: isCorrect,
+                      questionText: question.questionText,
                     ),
                   ),
-                  ...List.generate(
-                      question.options.length,
-                      (index) => AnswerOption(
-                            index: index,
-                            optionText: question.options[index],
-                            isAnswered: isAnswered,
-                            isCorrect: index == question.correctAnswerIndex,
-                            isSelected: index == selectedAnswerIndex,
-                            onTap: () => _checkAnswer(index),
-                          )),
+                  
+                  // Answers Section
+                  Expanded(
+                    flex: 3,
+                    child: widget.quiz.theme == QuizTheme.classic 
+                      ? _buildClassicAnswers(question)
+                      : _buildGamifiedAnswers(question),
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildClassicAnswers(question) {
+    return ListView.builder(
+      itemCount: question.options.length,
+      itemBuilder: (context, index) => AnswerOption(
+        index: index,
+        optionText: question.options[index],
+        isAnswered: isAnswered,
+        isCorrect: index == question.correctAnswerIndex,
+        isSelected: index == selectedAnswerIndex,
+        onTap: () => _checkAnswer(index),
+        theme: widget.quiz.theme,
+      ),
+    );
+  }
+
+  Widget _buildGamifiedAnswers(question) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: List.generate(question.options.length, (index) {
+            double top = (index < 2) ? 20.h : 120.h;
+            double left = (index % 2 == 0) ? 20.w : constraints.maxWidth - 140.w;
+            
+            return Positioned(
+              top: top,
+              left: left,
+              child: ElasticIn(
+                delay: Duration(milliseconds: index * 150),
+                child: AnswerOption(
+                  index: index,
+                  optionText: question.options[index],
+                  isAnswered: isAnswered,
+                  isCorrect: index == question.correctAnswerIndex,
+                  isSelected: index == selectedAnswerIndex,
+                  onTap: () => _checkAnswer(index),
+                  theme: widget.quiz.theme,
+                ),
+              ),
+            );
+          }),
+        );
+      }
     );
   }
 
@@ -295,7 +376,7 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('إكمال الاختبار')),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); 
               _saveAndShowResult(reason: 'تم إنهاء الاختبار بناءً على رغبتك');
             },
             child: const Text('خروج وحفظ', style: TextStyle(color: Colors.red)),
@@ -339,11 +420,14 @@ class _QuizScreenState extends State<QuizScreen> with WidgetsBindingObserver {
   Widget _buildSpaceBackground() {
     return Stack(
       children: List.generate(
-          10,
+          15,
           (index) => Positioned(
-                top: (index * 80.0) % 600,
-                left: (index * 100.0) % 350,
-                child: const Icon(Icons.star, color: Colors.white, size: 5),
+                top: (index * 70.0) % 800,
+                left: (index * 90.0) % 400,
+                child: Flash(
+                  duration: Duration(seconds: 1 + (index % 3)),
+                  child: const Icon(Icons.star, color: Colors.white, size: 4),
+                ),
               )),
     );
   }

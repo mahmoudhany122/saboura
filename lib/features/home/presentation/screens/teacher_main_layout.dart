@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../courses/presentation/screens/teacher_dashboard_screen.dart';
+import '../../../courses/presentation/screens/teacher_my_courses_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 
 class TeacherMainLayout extends StatefulWidget {
@@ -15,7 +16,7 @@ class _TeacherMainLayoutState extends State<TeacherMainLayout> {
 
   final List<Widget> _screens = [
     const TeacherDashboardScreen(),
-    const Scaffold(body: Center(child: Text('إدارة الكورسات'))), // Placeholder for Course Management
+    const TeacherMyCoursesScreen(),
     const SettingsScreen(),
   ];
 

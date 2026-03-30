@@ -14,6 +14,9 @@ import '../../features/courses/presentation/logic/courses_cubit.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // Clear old registrations to prevent hang during Hot Restart
+  await sl.reset();
+
   // Features - Auth
   sl.registerFactory(() => AuthCubit(sl()));
   sl.registerLazySingleton<AuthRepo>(() => AuthRepoImpl(sl(), sl(), sl()));

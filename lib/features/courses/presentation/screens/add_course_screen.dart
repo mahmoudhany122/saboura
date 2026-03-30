@@ -7,6 +7,7 @@ import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../../../core/widgets/app_text_form_field.dart';
+import '../../../../core/helpers/image_upload_helper.dart';
 import '../../domain/entities/quiz_entity.dart';
 import '../widgets/course_image_picker.dart';
 import '../widgets/quiz_theme_selector.dart';
@@ -25,6 +26,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   final TextEditingController _imageUrlController = TextEditingController();
   QuizTheme selectedQuizTheme = QuizTheme.classic;
   File? _image;
+  bool _isUploadingImage = false;
   final picker = ImagePicker();
 
   Future<void> _pickImage() async {
@@ -34,6 +36,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         _image = File(pickedFile.path);
         _imageUrlController.clear();
       });
+      
+      // Auto-upload to ImgBB
+      setState(() => _isUploadingImage = true);
+      final uploadedUrl = await ImageUploadHelper.uploadImage(_image!);
+      setState(() => _isUploadingImage = false);
+
+      if (uploadedUrl != null) {
+        setState(() {
+          _imageUrlController.text = uploadedUrl;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم رفع الصورة بنجاح! ✅'), backgroundColor: Colors.green),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل رفع الصورة، سيتم المحاولة لاحقاً'), backgroundColor: Colors.orange),
+        );
+      }
     }
   }
 
@@ -56,15 +76,22 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CourseImagePicker(
-                imageFile: _image,
-                imageUrl: _imageUrlController.text,
-                onTap: _pickImage,
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CourseImagePicker(
+                    imageFile: _image,
+                    imageUrl: _imageUrlController.text,
+                    onTap: _isUploadingImage ? () {} : _pickImage,
+                  ),
+                  if (_isUploadingImage)
+                    const CircularProgressIndicator(color: ColorsManager.mainBlue),
+                ],
               ),
               const SizedBox(height: 15),
               AppTextFormField(
                 controller: _imageUrlController,
-                hintText: 'رابط صورة الكورس (اختياري لتوفير التكلفة)',
+                hintText: 'رابط الصورة (يُملأ تلقائياً عند الرفع)',
                 validator: (v) => null,
                 suffixIcon: const Icon(Icons.link, color: Colors.grey),
               ),
@@ -94,7 +121,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               const SizedBox(height: 40),
               FadeInUp(
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _isUploadingImage ? null : () {
                     if (_formKey.currentState!.validate()) {
                       Navigator.pushNamed(
                         context,

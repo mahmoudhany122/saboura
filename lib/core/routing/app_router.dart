@@ -10,6 +10,10 @@ import '../../features/courses/presentation/screens/add_quiz_screen.dart';
 import '../../features/courses/presentation/screens/quiz_screen.dart';
 import '../../features/courses/presentation/screens/course_details_screen.dart';
 import '../../features/courses/presentation/screens/lesson_viewer_screen.dart';
+import '../../features/courses/presentation/screens/parent_dashboard_screen.dart';
+import '../../features/courses/presentation/screens/notification_screen.dart';
+import '../../features/courses/presentation/screens/quiz_results_screen.dart';
+import '../../features/courses/presentation/screens/quiz_review_screen.dart';
 import '../../features/home/presentation/screens/teacher_main_layout.dart';
 import '../../features/home/presentation/screens/student_main_layout.dart';
 import '../../features/courses/presentation/screens/student_dashboard_screen.dart';
@@ -17,6 +21,7 @@ import '../../features/courses/presentation/screens/leaderboard_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/courses/domain/entities/quiz_entity.dart';
 import '../../features/courses/domain/entities/course_entity.dart';
+import '../../features/courses/domain/entities/quiz_result_entity.dart';
 import 'routes.dart';
 
 class AppRouter {
@@ -56,6 +61,20 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const StudentMainLayout());
       case Routes.studentDashboardScreen:
         return MaterialPageRoute(builder: (_) => const StudentDashboardScreen());
+      case Routes.parentDashboardScreen:
+        return MaterialPageRoute(builder: (_) => const ParentDashboardScreen());
+      case Routes.notificationScreen:
+        return MaterialPageRoute(builder: (_) => const NotificationScreen());
+      case Routes.quizResultsScreen:
+        return MaterialPageRoute(builder: (_) => const QuizResultsScreen());
+      case Routes.quizReviewScreen:
+        final args = arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => QuizReviewScreen(
+            result: args['result'] as QuizResultEntity,
+            quiz: args['quiz'] as QuizEntity,
+          ),
+        );
       case Routes.leaderboardScreen:
         return MaterialPageRoute(builder: (_) => const LeaderboardScreen());
       case Routes.settingsScreen:

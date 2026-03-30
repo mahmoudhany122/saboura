@@ -85,13 +85,21 @@ class _AddLessonsScreenState extends State<AddLessonsScreen> {
           isUploading: _isUploading,
           onPickPdf: _pickAndUploadPDF,
           onSave: (title, videoUrl, pdfUrl, quiz) {
+            final themedQuiz = quiz != null ? QuizEntity(
+              id: quiz.id,
+              title: quiz.title,
+              durationInMinutes: quiz.durationInMinutes,
+              questions: quiz.questions,
+              theme: widget.courseData['quizTheme'] ?? QuizTheme.classic,
+            ) : null;
+
             setState(() {
               _lessons.add(LessonEntity(
                 id: DateTime.now().toString(),
                 title: title,
                 videoUrl: videoUrl,
                 pdfUrl: pdfUrl,
-                quiz: quiz,
+                quiz: themedQuiz,
               ));
             });
           },
@@ -156,7 +164,7 @@ class _AddLessonsScreenState extends State<AddLessonsScreen> {
         children: [
           if (lesson.videoUrl != null) const ListTile(leading: Icon(Icons.play_circle, color: Colors.red), title: Text('فيديو الدرس')),
           if (lesson.pdfUrl != null) const ListTile(leading: Icon(Icons.picture_as_pdf, color: Colors.orange), title: Text('ملف PDF')),
-          if (lesson.quiz != null) const ListTile(leading: Icon(Icons.quiz, color: Colors.green), title: Text('اختبار')),
+          if (lesson.quiz != null) const ListTile(leading: Icon(Icons.quiz, color: Colors.green), title: Text('اختبار مفعل')),
         ],
       ),
     );
@@ -195,19 +203,20 @@ class _AddLessonsScreenState extends State<AddLessonsScreen> {
     setState(() => _isSavingFinal = true);
 
     try {
+      // Fix Null Safety: Ensure imageUrl is never null
       String imageUrl = widget.courseData['imageUrl'] ?? '';
       
       if (widget.courseData['imageFile'] != null && imageUrl.isEmpty) {
         final imageFile = widget.courseData['imageFile'] as File;
         final fileName = 'course_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
         final url = await context.read<CoursesCubit>().uploadFile(imageFile, fileName);
-        if (url != null) imageUrl = url;
+        imageUrl = url ?? ''; // Fallback to empty string if upload fails
       }
 
       final course = CourseEntity(
-        id: widget.courseData['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        title: widget.courseData['title'],
-        description: widget.courseData['description'],
+        id: widget.courseData['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: widget.courseData['title'] ?? 'كورس بدون عنوان',
+        description: widget.courseData['description'] ?? '',
         imageUrl: imageUrl,
         teacherId: uId,
         modules: [ModuleEntity(id: 'm1', title: 'المنهج الدراسي', lessons: _lessons)],

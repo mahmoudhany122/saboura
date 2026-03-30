@@ -24,6 +24,7 @@ class CourseDetailsScreen extends StatefulWidget {
 
 class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   bool isEnrolled = false;
+  double _userRating = 0;
 
   @override
   void initState() {
@@ -34,18 +35,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   void _checkInitialEnrollment() {
     final cubit = context.read<CoursesCubit>();
     final uId = CacheHelper.getData(key: 'uId');
-    
-    // Check if the user is already enrolled using the list in Cubit
     if (cubit.enrolledCourseIds.contains(widget.course.id)) {
-      setState(() {
-        isEnrolled = true;
-      });
+      setState(() => isEnrolled = true);
     }
-
-    if (uId != null) {
-      // Load completed lessons to sync progress state
-      cubit.getCompletedLessons(uId, widget.course.id);
-    }
+    if (uId != null) cubit.getCompletedLessons(uId, widget.course.id);
   }
 
   @override
@@ -55,14 +48,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       bottomNavigationBar: !isEnrolled ? PersistentEnrollButton(course: widget.course) : null,
       body: BlocListener<CoursesCubit, CoursesState>(
         listener: (context, state) {
-          if (state is EnrollmentSuccess) {
-            setState(() => isEnrolled = true);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('تم الاشتراك في الكورس بنجاح! 🎉'),
-                  backgroundColor: Colors.green),
-            );
-          }
+          if (state is EnrollmentSuccess) setState(() => isEnrolled = true);
         },
         child: CustomScrollView(
           slivers: [
@@ -78,18 +64,53 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     if (isEnrolled) ...[
                       CourseDetailsProgress(course: widget.course),
                       verticalSpace(24),
+                      _buildRatingSection(), // New Rating Section
+                      verticalSpace(24),
                     ],
-                    Text('محتوى المنهج',
-                        style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp)),
+                    Text('منهج الكورس', style: TextStyles.font15DarkBlueMedium.copyWith(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                     verticalSpace(15),
-                    _buildLessonsList(),
-                    verticalSpace(100), // Space for persistent button
+                    _buildCurriculum(),
+                    verticalSpace(100), 
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRatingSection() {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amber.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          const Text('ما رأيك في هذا الكورس؟', style: TextStyle(fontWeight: FontWeight.bold)),
+          verticalSpace(10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return IconButton(
+                onPressed: () {
+                  setState(() => _userRating = index + 1.0);
+                  context.read<CoursesCubit>().rateCourse(widget.course.id, _userRating);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شكراً لتقييمك! ❤️'), backgroundColor: Colors.amber));
+                },
+                icon: Icon(
+                  index < _userRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: Colors.amber,
+                  size: 35.sp,
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -104,27 +125,31 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           tag: widget.course.id,
           child: widget.course.imageUrl.isNotEmpty
               ? Image.network(widget.course.imageUrl, fit: BoxFit.cover)
-              : Container(
-                  color: ColorsManager.mainBlue.withOpacity(0.1),
-                  child: const Icon(Icons.school, size: 80, color: ColorsManager.mainBlue),
-                ),
+              : Container(color: ColorsManager.mainBlue.withOpacity(0.1), child: const Icon(Icons.school, size: 80, color: ColorsManager.mainBlue)),
         ),
       ),
     );
   }
 
-  Widget _buildLessonsList() {
-    final lessons = widget.course.modules.isNotEmpty ? widget.course.modules[0].lessons : [];
+  Widget _buildCurriculum() {
+    if (widget.course.modules.isEmpty) return const Center(child: Text('لا يوجد محتوى مضاف لهذا الكورس بعد.'));
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: lessons.length,
-      itemBuilder: (context, index) {
-        return LessonExpansionTile(
-          lesson: lessons[index],
-          index: index,
-          isEnrolled: isEnrolled,
-          courseId: widget.course.id,
+      itemCount: widget.course.modules.length,
+      itemBuilder: (context, moduleIndex) {
+        final module = widget.course.modules[moduleIndex];
+        return Container(
+          margin: EdgeInsets.only(bottom: 15.h),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.shade200)),
+          child: ExpansionTile(
+            initiallyExpanded: moduleIndex == 0,
+            title: Text('الوحدة ${moduleIndex + 1}: ${module.title}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp, color: ColorsManager.darkBlue)),
+            subtitle: Text('${module.lessons.length} دروس', style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+            children: module.lessons.asMap().entries.map((entry) {
+              return LessonExpansionTile(lesson: entry.value, index: entry.key, isEnrolled: isEnrolled, courseId: widget.course.id);
+            }).toList(),
+          ),
         );
       },
     );

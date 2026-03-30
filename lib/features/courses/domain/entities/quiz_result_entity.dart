@@ -10,6 +10,7 @@ class QuizResultEntity extends Equatable {
   final int score;
   final int totalQuestions;
   final DateTime timestamp;
+  final List<int> userAnswers; // Store the index of the answer chosen for each question
 
   const QuizResultEntity({
     required this.id,
@@ -21,8 +22,20 @@ class QuizResultEntity extends Equatable {
     required this.score,
     required this.totalQuestions,
     required this.timestamp,
+    required this.userAnswers,
   });
 
   @override
-  List<Object?> get props => [id, userId, userName, courseId, quizId, quizTitle, score, totalQuestions, timestamp];
+  List<Object?> get props => [
+        id,
+        userId,
+        userName,
+        courseId,
+        quizId,
+        quizTitle,
+        score,
+        totalQuestions,
+        timestamp,
+        userAnswers,
+      ];
 }

@@ -1,21 +1,23 @@
-abstract class AuthState<T> {
+import '../../domain/entities/user_entity.dart';
+
+abstract class AuthState {
   const AuthState();
 }
 
-class AuthInitial<T> extends AuthState<T> {
+class AuthInitial extends AuthState {
   const AuthInitial();
 }
 
-class AuthLoading<T> extends AuthState<T> {
+class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
-class AuthSuccess<T> extends AuthState<T> {
-  final T data;
-  const AuthSuccess(this.data);
+class AuthSuccess extends AuthState {
+  final UserEntity user;
+  const AuthSuccess(this.user);
 }
 
-class AuthError<T> extends AuthState<T> {
+class AuthError extends AuthState {
   final String error;
   const AuthError({required this.error});
 }

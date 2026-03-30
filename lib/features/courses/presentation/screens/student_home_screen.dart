@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/helpers/cache_helper.dart';
+import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 import '../../../../core/helpers/spacing.dart';
@@ -12,6 +13,7 @@ import '../logic/courses_state.dart';
 import '../../domain/entities/course_entity.dart';
 import '../widgets/course_card.dart';
 import '../widgets/category_filter.dart';
+import '../widgets/student_stats_bar.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -22,11 +24,22 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String selectedCategory = 'الكل';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    context.read<CoursesCubit>().getAllCourses();
+    // Fetch data ONLY ONCE when entering the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CoursesCubit>().getAllCourses();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -38,6 +51,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       appBar: AppBar(
         title: const Text('استكشف الكورسات'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, Routes.notificationScreen),
+            icon: const Icon(Icons.notifications_active_outlined, color: ColorsManager.mainBlue),
+          ),
           IconButton(
             onPressed: () => context.read<CoursesCubit>().getAllCourses(),
             icon: const Icon(Icons.refresh),
@@ -63,14 +80,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     verticalSpace(20),
+                    _buildWelcomeHeader(userName),
+                    verticalSpace(20),
+                    
+                    // Advanced Stats Bar
                     FadeInDown(
-                      child: Text(
-                        'أهلاً بك يا $userName! 👋',
-                        style: TextStyles.font24BlackBold,
+                      delay: const Duration(milliseconds: 200),
+                      child: const StudentStatsBar(
+                        points: 1250, // Static for now, will link to profile
+                        streak: 5,
                       ),
                     ),
-                    verticalSpace(8),
-                    Text('جاهز لتعلم شيء جديد اليوم؟', style: TextStyles.font14GrayRegular),
+                    
+                    verticalSpace(24),
+                    _buildSearchBar(),
                     verticalSpace(24),
                     
                     CategoryFilter(
@@ -97,26 +120,86 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
+  Widget _buildWelcomeHeader(String userName) {
+    return FadeInDown(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'أهلاً بك يا $userName! 👋',
+            style: TextStyles.font24BlackBold,
+          ),
+          verticalSpace(4),
+          Text('جاهز لتعلم شيء جديد وجمع النقاط؟', style: TextStyles.font14GrayRegular),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.toLowerCase();
+          });
+        },
+        decoration: InputDecoration(
+          hintText: 'ابحث عن كورس أو مادة...',
+          prefixIcon: const Icon(Icons.search, color: ColorsManager.mainBlue),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody(CoursesState state) {
     if (state is CoursesLoading) {
       return _buildShimmerLoading();
-    } else if (state is CoursesLoaded) {
-      return _buildCoursesGrid(state.courses);
-    } else if (state is CoursesError) {
-      return _buildErrorWidget(state.error);
     }
-    return const SizedBox.shrink();
+    
+    // We get the latest list from the Cubit directly to be safer
+    final courses = context.read<CoursesCubit>().teacherCourses;
+    
+    if (courses.isEmpty && state is! CoursesLoading) {
+      return Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: Text('لا يوجد كورسات متاحة حالياً', style: TextStyles.font14GrayRegular),
+      ));
+    }
+
+    return _buildCoursesGrid(courses);
   }
 
   Widget _buildCoursesGrid(List<CourseEntity> courses) {
-    final filteredCourses = selectedCategory == 'الكل'
+    var filteredCourses = selectedCategory == 'الكل'
         ? courses
         : courses.where((c) => c.title.contains(selectedCategory)).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      filteredCourses = filteredCourses.where((c) => 
+        c.title.toLowerCase().contains(_searchQuery) || 
+        c.description.toLowerCase().contains(_searchQuery)
+      ).toList();
+    }
 
     if (filteredCourses.isEmpty) {
       return Center(child: Padding(
         padding: EdgeInsets.symmetric(vertical: 40.h),
-        child: Text('لا يوجد كورسات في هذا القسم حالياً', style: TextStyles.font14GrayRegular),
+        child: Column(
+          children: [
+            Icon(Icons.search_off, size: 60.w, color: Colors.grey),
+            verticalSpace(10),
+            const Text('لا يوجد نتائج مطابقة'),
+          ],
+        ),
       ));
     }
 

@@ -9,30 +9,35 @@ class NotificationHelper {
       FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    try {
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    String? token = await messaging.getToken();
-    log("FCM Token: $token");
+      String? token = await messaging.getToken();
+      log("FCM Token: $token");
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Use @mipmap/logo since we renamed the app icons
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/logo');
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
+      const InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+      );
 
-    await _localNotificationsPlugin.initialize(initializationSettings);
+      await _localNotificationsPlugin.initialize(initializationSettings);
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      log("Foreground Message received: ${message.notification?.title}");
-      _showLocalNotification(message);
-    });
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        log("Foreground Message received: ${message.notification?.title}");
+        _showLocalNotification(message);
+      });
+    } catch (e) {
+      log("Notification Init Error: $e");
+    }
   }
 
   static Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -46,6 +51,8 @@ class NotificationHelper {
       playSound: true,
       // Note: Sound file must be in res/raw/notification_sound.mp3
       sound: RawResourceAndroidNotificationSound('notification_sound'),
+      // Also use the correct icon here
+      icon: '@mipmap/logo',
     );
 
     const NotificationDetails platformChannelSpecifics =
@@ -59,16 +66,12 @@ class NotificationHelper {
     );
   }
 
-  /// Sends a notification to a specific topic or token
-  /// In a production app, this should be done via Cloud Functions for security.
   static Future<void> sendPushNotification({
     required String title,
     required String body,
-    required String targetToken, // or use topic
+    required String targetToken,
   }) async {
     try {
-      // Note: You need your FCM Server Key from Firebase Console
-      // This is for demonstration. For real apps, use Firebase Admin SDK on a server.
       const String serverKey = "YOUR_FCM_SERVER_KEY"; 
 
       await Dio().post(

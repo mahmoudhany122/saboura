@@ -37,44 +37,37 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 duration: const Duration(milliseconds: 600),
                 delay: const Duration(milliseconds: 200),
                 child: Text(
-                  'هل أنت طالب تبحث عن المعرفة أم معلم ترغب في مشاركتها؟',
+                  'هل أنت طالب، معلم، أم ولي أمر يرغب في متابعة أبنائه؟',
                   style: TextStyles.font14GrayRegular.copyWith(fontSize: 16.sp),
                 ),
               ),
-              SizedBox(height: 40.h),
+              SizedBox(height: 30.h),
               Expanded(
-                child: Column(
-                  children: [
-                    FadeInLeft(
-                      duration: const Duration(milliseconds: 800),
-                      child: RoleCard(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildRoleOption(
                         title: 'طالب',
-                        description: 'استكشف الكورسات، تابع دروسك، وتواصل مع معلميك.',
+                        desc: 'استكشف الكورسات، تعلم والعب.',
                         icon: Icons.school_outlined,
-                        isSelected: selectedRole == 'student',
-                        onTap: () {
-                          setState(() {
-                            selectedRole = 'student';
-                          });
-                        },
+                        role: 'student',
                       ),
-                    ),
-                    SizedBox(height: 20.h),
-                    FadeInRight(
-                      duration: const Duration(milliseconds: 800),
-                      child: RoleCard(
+                      SizedBox(height: 15.h),
+                      _buildRoleOption(
                         title: 'معلم',
-                        description: 'أنشئ كورساتك، أضف دروسك، وتابع تقدم طلابك.',
+                        desc: 'أنشئ دروسك وتابع تقدم طلابك.',
                         icon: Icons.person_outline,
-                        isSelected: selectedRole == 'teacher',
-                        onTap: () {
-                          setState(() {
-                            selectedRole = 'teacher';
-                          });
-                        },
+                        role: 'teacher',
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 15.h),
+                      _buildRoleOption(
+                        title: 'ولي أمر',
+                        desc: 'تابع نتائج ابنك ومستواه الدراسي.',
+                        icon: Icons.family_restroom_outlined,
+                        role: 'parent',
+                      ),
+                    ],
+                  ),
                 ),
               ),
               FadeInUp(
@@ -83,32 +76,24 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   onPressed: selectedRole == null
                       ? null
                       : () async {
-                          // Update user role in Cache
                           await CacheHelper.setData(key: 'role', value: selectedRole);
-                          
                           if (!mounted) return;
 
                           if (selectedRole == 'teacher') {
-                            Navigator.pushNamedAndRemoveUntil(
-                                context, Routes.teacherDashboardScreen, (route) => false);
+                            Navigator.pushNamedAndRemoveUntil(context, Routes.teacherDashboardScreen, (route) => false);
+                          } else if (selectedRole == 'student') {
+                            Navigator.pushNamedAndRemoveUntil(context, Routes.studentHomeScreen, (route) => false);
                           } else {
-                            Navigator.pushNamedAndRemoveUntil(
-                                context, Routes.studentHomeScreen, (route) => false);
+                            // Link to Parent Dashboard - FIXED
+                            Navigator.pushNamedAndRemoveUntil(context, Routes.parentDashboardScreen, (route) => false);
                           }
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ColorsManager.mainBlue,
-                    disabledBackgroundColor: ColorsManager.lightGray,
                     minimumSize: Size(double.infinity, 56.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: Text(
-                    'تأكيد الاختيار',
-                    style: TextStyles.font16WhiteSemiBold,
-                  ),
+                  child: Text('تأكيد الاختيار', style: TextStyles.font16WhiteSemiBold),
                 ),
               ),
             ],
@@ -117,100 +102,36 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       ),
     );
   }
-}
 
-class RoleCard extends StatelessWidget {
-  final String title;
-  final String description;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const RoleCard({
-    super.key,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.all(20.w),
-        decoration: BoxDecoration(
-          color: isSelected ? ColorsManager.mainBlue.withOpacity(0.05) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? ColorsManager.mainBlue : ColorsManager.lighterGray,
-            width: isSelected ? 2 : 1,
+  Widget _buildRoleOption({required String title, required String desc, required IconData icon, required String role}) {
+    bool isSelected = selectedRole == role;
+    return FadeInLeft(
+      child: GestureDetector(
+        onTap: () => setState(() => selectedRole = role),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: isSelected ? ColorsManager.mainBlue.withOpacity(0.05) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isSelected ? ColorsManager.mainBlue : ColorsManager.lighterGray, width: isSelected ? 2 : 1),
           ),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: ColorsManager.mainBlue.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              )
-            else
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-          ],
-        ),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: isSelected ? ColorsManager.mainBlue : ColorsManager.moreLightGray,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : ColorsManager.mainBlue,
-                size: 32.w,
-              ),
-            ),
-            SizedBox(width: 20.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyles.font15DarkBlueMedium.copyWith(
-                      fontSize: 18.sp,
-                      color: isSelected ? ColorsManager.mainBlue : ColorsManager.darkBlue,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    description,
-                    style: TextStyles.font13GrayRegular.copyWith(
-                      color: isSelected ? ColorsManager.mainBlue.withOpacity(0.7) : ColorsManager.gray,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              FadeIn(
-                child: const Icon(
-                  Icons.check_circle,
-                  color: ColorsManager.mainBlue,
-                  size: 24,
+          child: Row(
+            children: [
+              Icon(icon, color: isSelected ? ColorsManager.mainBlue : Colors.grey, size: 30),
+              SizedBox(width: 15.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? ColorsManager.mainBlue : Colors.black)),
+                    Text(desc, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                  ],
                 ),
               ),
-          ],
+              if (isSelected) const Icon(Icons.check_circle, color: ColorsManager.mainBlue),
+            ],
+          ),
         ),
       ),
     );
