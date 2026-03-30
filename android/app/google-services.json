@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "686475805422",
+    "project_id": "saboura-42d80",
+    "storage_bucket": "saboura-42d80.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686475805422:android:738e36ae8ca603bb8969ff",
+        "android_client_info": {
+          "package_name": "com.example.saboura"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "686475805422-9fpmn4g2v2p2vfliba9s5pql9g7ovbh1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.saboura",
+            "certificate_hash": "a50c7c7f59527088912bf511c61df2a95fd35b1f"
+          }
+        },
+        {
+          "client_id": "686475805422-ipcldffbpid7mliim70rv3b8bir1fued.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJqJcekiiWiKfmz_VY-mVQSWo6ODFYkpE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686475805422-ipcldffbpid7mliim70rv3b8bir1fued.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
