@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 class ImageUploadHelper {
   // ملاحظة: يفضل وضع الـ API Key في ملف config أو بيئة آمنة
   // يمكنك الحصول على مفتاح خاص بك مجاناً من https://api.imgbb.com/
-  static const String _apiKey = 'YOUR_IMGBB_API_KEY'; 
+  static const String _apiKey = '97bf263eec47803b8ca69110bcef41e6';
   static const String _uploadUrl = 'https://api.imgbb.com/1/upload';
 
   static Future<String?> uploadImage(File imageFile) async {
