@@ -24,7 +24,6 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Get the selected theme from parent course settings if available
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic> && args.containsKey('quizTheme')) {
       previewTheme = args['quizTheme'] as QuizTheme;
@@ -36,16 +35,16 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
       builder: (context) {
         String questionText = '';
         List<String> options = ['', '', '', ''];
         int correctIndex = 0;
+        String correctTextAnswer = '';
+        QuestionType selectedType = QuestionType.multipleChoice;
 
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setLocalState) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.9,
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
@@ -64,69 +63,34 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Added Game Element Preview inside the question builder
-                          Container(
-                            height: 100.h,
-                            margin: EdgeInsets.symmetric(vertical: 10.h),
-                            decoration: BoxDecoration(
-                              color: ColorsManager.mainBlue.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: QuizGameElement(
-                              theme: previewTheme,
-                              progress: 0.5, // Preview state
-                              isAnswered: true,
-                              isCorrect: true,
-                              questionText: questionText.isEmpty ? 'معاينة السؤال هنا' : questionText,
-                            ),
-                          ),
+                          Text('نوع السؤال:', style: TextStyles.font14GrayRegular),
                           verticalSpace(10),
+                          Row(
+                            children: [
+                              _typeChip('اختيار من متعدد', QuestionType.multipleChoice, selectedType, (t) => setLocalState(() => selectedType = t)),
+                              horizontalSpace(10),
+                              _typeChip('أكمل الجملة', QuestionType.fillInTheBlanks, selectedType, (t) => setLocalState(() => selectedType = t)),
+                            ],
+                          ),
+                          verticalSpace(20),
                           Text('نص السؤال:', style: TextStyles.font14GrayRegular),
                           verticalSpace(10),
                           TextField(
-                            maxLines: 5,
-                            minLines: 3,
-                            decoration: InputDecoration(
-                              hintText: 'اكتب سؤالك هنا بوضوح...',
-                              fillColor: ColorsManager.moreLightGray,
-                              filled: true,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                            ),
-                            onChanged: (v) => setState(() => questionText = v),
+                            decoration: InputDecoration(hintText: 'اكتب سؤالك هنا...', fillColor: ColorsManager.moreLightGray, filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none)),
+                            onChanged: (v) => setLocalState(() => questionText = v),
                           ),
-                          verticalSpace(30),
-                          Text('الاختيارات والإجابة الصحيحة:', style: TextStyles.font14GrayRegular),
-                          verticalSpace(10),
-                          ...List.generate(4, (index) {
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 12.h),
-                              padding: EdgeInsets.symmetric(horizontal: 10.w),
-                              decoration: BoxDecoration(
-                                color: correctIndex == index ? ColorsManager.mainBlue.withOpacity(0.05) : Colors.white,
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: correctIndex == index ? ColorsManager.mainBlue : ColorsManager.lighterGray),
-                              ),
-                              child: Row(
-                                children: [
-                                  Radio<int>(
-                                    value: index,
-                                    groupValue: correctIndex,
-                                    onChanged: (v) => setState(() => correctIndex = v!),
-                                    activeColor: ColorsManager.mainBlue,
-                                  ),
-                                  Expanded(
-                                    child: TextField(
-                                      decoration: InputDecoration(
-                                        hintText: 'الاختيار ${index + 1}',
-                                        border: InputBorder.none,
-                                      ),
-                                      onChanged: (v) => options[index] = v,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
+                          verticalSpace(25),
+                          if (selectedType == QuestionType.multipleChoice) ...[
+                            Text('الاختيارات:', style: TextStyles.font14GrayRegular),
+                            ...List.generate(4, (index) => _buildOptionField(index, correctIndex, (idx) => setLocalState(() => correctIndex = idx), (v) => options[index] = v)),
+                          ] else ...[
+                            Text('الإجابة الصحيحة (نص):', style: TextStyles.font14GrayRegular),
+                            verticalSpace(10),
+                            TextField(
+                              decoration: InputDecoration(hintText: 'اكتب الإجابة التي يجب على الطالب كتابتها...', fillColor: Colors.green.withOpacity(0.05), filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+                              onChanged: (v) => setLocalState(() => correctTextAnswer = v),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -134,23 +98,21 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
                   verticalSpace(20),
                   ElevatedButton(
                     onPressed: () {
-                      if (questionText.isNotEmpty && options.every((element) => element.isNotEmpty)) {
+                      if (questionText.isNotEmpty) {
                         _questions.add(QuestionEntity(
                           id: DateTime.now().toString(),
                           questionText: questionText,
-                          options: options,
-                          correctAnswerIndex: correctIndex,
+                          type: selectedType,
+                          options: selectedType == QuestionType.multipleChoice ? options : [],
+                          correctAnswerIndex: selectedType == QuestionType.multipleChoice ? correctIndex : -1,
+                          correctTextAnswer: selectedType == QuestionType.fillInTheBlanks ? correctTextAnswer : null,
                         ));
-                        this.setState(() {}); // Update main screen
+                        setState(() {});
                         Navigator.pop(context);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorsManager.mainBlue,
-                      minimumSize: Size(double.infinity, 56.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: const Text('حفظ السؤال في القائمة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: ColorsManager.mainBlue, minimumSize: Size(double.infinity, 56.h), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    child: const Text('حفظ السؤال', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],
@@ -162,126 +124,105 @@ class _AddQuizScreenState extends State<AddQuizScreen> {
     );
   }
 
+  Widget _typeChip(String label, QuestionType type, QuestionType current, Function(QuestionType) onSelected) {
+    bool isSelected = type == current;
+    return GestureDetector(
+      onTap: () => onSelected(type),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        decoration: BoxDecoration(color: isSelected ? ColorsManager.mainBlue : Colors.grey[200], borderRadius: BorderRadius.circular(20)),
+        child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold, fontSize: 12.sp)),
+      ),
+    );
+  }
+
+  Widget _buildOptionField(int index, int correctIndex, Function(int) onCorrectSelected, Function(String) onChanged) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 10.h),
+      child: Row(
+        children: [
+          Radio<int>(value: index, groupValue: correctIndex, onChanged: (v) => onCorrectSelected(v!), activeColor: ColorsManager.mainBlue),
+          Expanded(child: TextField(decoration: InputDecoration(hintText: 'الاختيار ${index + 1}'), onChanged: onChanged)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
-      appBar: AppBar(
-        title: const Text('بناء الاختبار'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('بناء الاختبار المختلط')),
       body: Padding(
         padding: EdgeInsets.all(20.w),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Theme Preview Bar at the top
-              Container(
-                margin: EdgeInsets.only(bottom: 20.h),
-                padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 15.w),
-                decoration: BoxDecoration(
-                  color: ColorsManager.mainBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.auto_awesome, color: ColorsManager.mainBlue),
-                    horizontalSpace(10),
-                    Text('اللعبة الحالية: ${previewTheme.name.toUpperCase()}', 
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: ColorsManager.mainBlue)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.all(15.w),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _quizTitleController,
-                      decoration: const InputDecoration(hintText: 'عنوان الاختبار (مثلاً: مراجعة الوحدة الأولى)', border: InputBorder.none),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                    ),
-                    const Divider(),
-                    TextFormField(
-                      controller: _durationController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: 'مدة الاختبار بالدقائق', border: InputBorder.none, prefixIcon: Icon(Icons.timer_outlined)),
-                      validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                    ),
-                  ],
-                ),
-              ),
-              verticalSpace(25),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('الأسئلة المُضافة (${_questions.length})', style: TextStyles.font15DarkBlueMedium),
-                  TextButton.icon(
-                    onPressed: _addNewQuestion,
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text('إضافة سؤال جديد'),
-                  ),
-                ],
-              ),
-              verticalSpace(10),
-              Expanded(
-                child: _questions.isEmpty
-                    ? Center(child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.quiz_outlined, size: 60.w, color: ColorsManager.lightGray),
-                          const Text('لم تقم بإضافة أسئلة بعد'),
-                        ],
-                      ))
-                    : ListView.builder(
-                        itemCount: _questions.length,
-                        itemBuilder: (context, index) {
-                          return FadeInRight(
-                            child: Card(
-                              margin: EdgeInsets.only(bottom: 12.h),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                              child: ListTile(
-                                leading: CircleAvatar(backgroundColor: ColorsManager.mainBlue.withOpacity(0.1), child: Text('${index + 1}')),
-                                title: Text(_questions[index].questionText, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text('صح: ${_questions[index].options[_questions[index].correctAnswerIndex]}'),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () => setState(() => _questions.removeAt(index)),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
+              _buildHeader(),
               verticalSpace(20),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate() && _questions.isNotEmpty) {
-                    final quiz = QuizEntity(
-                      id: DateTime.now().toString(),
-                      title: _quizTitleController.text,
-                      durationInMinutes: int.parse(_durationController.text),
-                      questions: _questions,
-                      theme: previewTheme,
-                    );
-                    Navigator.pop(context, quiz);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ColorsManager.mainBlue,
-                  minimumSize: Size(double.infinity, 56.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('اعتماد وحفظ الاختبار النهائي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
+              _buildQuestionsList(),
+              verticalSpace(20),
+              _buildSaveButton(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.all(15.w),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        children: [
+          TextFormField(controller: _quizTitleController, decoration: const InputDecoration(hintText: 'عنوان الاختبار', border: InputBorder.none)),
+          const Divider(),
+          TextFormField(controller: _durationController, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'المدة بالدقائق', border: InputBorder.none, prefixIcon: Icon(Icons.timer))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionsList() {
+    return Expanded(
+      child: Column(
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('الأسئلة (${_questions.length})', style: TextStyles.font15DarkBlueMedium),
+            TextButton.icon(onPressed: _addNewQuestion, icon: const Icon(Icons.add_circle), label: const Text('إضافة سؤال')),
+          ]),
+          Expanded(
+            child: _questions.isEmpty
+                ? const Center(child: Text('ابدأ بإضافة أسئلة متنوعة'))
+                : ListView.builder(
+                    itemCount: _questions.length,
+                    itemBuilder: (context, index) => Card(
+                      child: ListTile(
+                        leading: Icon(_questions[index].type == QuestionType.multipleChoice ? Icons.list : Icons.edit_note, color: ColorsManager.mainBlue),
+                        title: Text(_questions[index].questionText),
+                        subtitle: Text(_questions[index].type == QuestionType.multipleChoice ? 'اختيار من متعدد' : 'أكمل: ${_questions[index].correctTextAnswer}'),
+                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => setState(() => _questions.removeAt(index))),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return ElevatedButton(
+      onPressed: () {
+        if (_formKey.currentState!.validate() && _questions.isNotEmpty) {
+          final quiz = QuizEntity(id: DateTime.now().toString(), title: _quizTitleController.text, durationInMinutes: int.parse(_durationController.text), questions: _questions, theme: previewTheme);
+          Navigator.pop(context, quiz);
+        }
+      },
+      style: ElevatedButton.styleFrom(backgroundColor: ColorsManager.mainBlue, minimumSize: Size(double.infinity, 56.h), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+      child: const Text('اعتماد الاختبار', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
 }

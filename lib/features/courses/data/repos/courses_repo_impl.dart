@@ -32,8 +32,6 @@ class CoursesRepoImpl implements CoursesRepo {
         ratingCount: course.ratingCount,
         enrollmentCount: course.enrollmentCount,
       );
-      
-      // CRITICAL FIX: Convert to JSON Map before sending to Firestore
       await _firestore.collection('courses').doc(course.id).set(courseModel.toJson());
       return const Right(null);
     } catch (e) {
@@ -164,6 +162,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(results);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -183,6 +182,7 @@ class CoursesRepoImpl implements CoursesRepo {
   @override
   Future<Either<String, void>> saveQuizResult(QuizResultEntity result) async {
     try {
+      // 1. Save the result
       await _firestore.collection('quiz_results').doc(result.id).set({
         'userId': result.userId,
         'userName': result.userName,
@@ -194,6 +194,16 @@ class CoursesRepoImpl implements CoursesRepo {
         'timestamp': result.timestamp,
         'userAnswers': result.userAnswers,
       });
+
+      // 2. REWARD SYSTEM: Calculate and Add XP to user profile
+      int xpGained = result.score * 10;
+      if (result.score == result.totalQuestions) xpGained += 50; // Genius Bonus
+
+      await _firestore.collection('users').doc(result.userId).update({
+        'points': FieldValue.increment(xpGained),
+        'streak': FieldValue.increment(1),
+      });
+
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -225,6 +235,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(results);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -289,6 +300,7 @@ class CoursesRepoImpl implements CoursesRepo {
       }).toList();
       return Right(leaderboard);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -339,6 +351,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(comments);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -381,6 +394,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(notifications);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -424,6 +438,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(enrollments);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }
@@ -469,6 +484,7 @@ class CoursesRepoImpl implements CoursesRepo {
 
       return Right(messages);
     } catch (e) {
+      print("[FIREBASE_ERROR]: $e");
       return Left(e.toString());
     }
   }

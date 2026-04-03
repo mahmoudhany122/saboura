@@ -14,8 +14,10 @@ import '../../features/courses/presentation/logic/courses_cubit.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
-  // Clear old registrations to prevent hang during Hot Restart
-  await sl.reset();
+  // FEATURES - Use registerFactory or registerLazySingleton correctly
+  if (sl.isRegistered<AuthCubit>()) {
+    return; // Already initialized, skip to prevent Hot Restart hang
+  }
 
   // Features - Auth
   sl.registerFactory(() => AuthCubit(sl()));
@@ -25,11 +27,13 @@ Future<void> init() async {
   sl.registerFactory(() => CoursesCubit(sl()));
   sl.registerLazySingleton<CoursesRepo>(() => CoursesRepoImpl(sl(), sl()));
 
-  // External
-  final sharedPreferences = await SharedPreferences.getInstance();
-  sl.registerLazySingleton(() => sharedPreferences);
-  sl.registerLazySingleton(() => FirebaseAuth.instance);
-  sl.registerLazySingleton(() => FirebaseFirestore.instance);
-  sl.registerLazySingleton(() => FirebaseStorage.instance);
-  sl.registerLazySingleton(() => GoogleSignIn());
+  // External - Registered only if not already present
+  if (!sl.isRegistered<SharedPreferences>()) {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    sl.registerLazySingleton(() => sharedPreferences);
+    sl.registerLazySingleton(() => FirebaseAuth.instance);
+    sl.registerLazySingleton(() => FirebaseFirestore.instance);
+    sl.registerLazySingleton(() => FirebaseStorage.instance);
+    sl.registerLazySingleton(() => GoogleSignIn());
+  }
 }

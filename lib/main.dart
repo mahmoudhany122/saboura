@@ -23,8 +23,8 @@ void main() async {
   
   // These MUST be awaited to avoid GetIt errors during provider creation
   await Firebase.initializeApp();
+
   await di.init();
-  
   // Optional services can run in background
   NotificationHelper.init();
   

@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+enum QuestionType { multipleChoice, fillInTheBlanks }
+
 class QuizEntity extends Equatable {
   final String id;
   final String title;
@@ -22,18 +24,22 @@ class QuizEntity extends Equatable {
 class QuestionEntity extends Equatable {
   final String id;
   final String questionText;
-  final List<String> options;
-  final int correctAnswerIndex;
+  final List<String> options; // Empty for Fill in the blanks
+  final int correctAnswerIndex; // -1 for Fill in the blanks
+  final String? correctTextAnswer; // Used for Fill in the blanks
+  final QuestionType type;
 
   const QuestionEntity({
     required this.id,
     required this.questionText,
-    required this.options,
-    required this.correctAnswerIndex,
+    this.options = const [],
+    this.correctAnswerIndex = -1,
+    this.correctTextAnswer,
+    this.type = QuestionType.multipleChoice,
   });
 
   @override
-  List<Object?> get props => [id, questionText, options, correctAnswerIndex];
+  List<Object?> get props => [id, questionText, options, correctAnswerIndex, correctTextAnswer, type];
 }
 
 enum QuizTheme { classic, carRacing, space, desert, monkey }
